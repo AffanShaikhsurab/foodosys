@@ -238,22 +238,23 @@ DROP POLICY IF EXISTS leaderboard_update_auth ON leaderboard;
 CREATE POLICY leaderboard_update_auth ON leaderboard FOR UPDATE TO authenticated USING ((SELECT auth.uid()) IS NOT NULL);
 
 -- =========================
+-- Storage policies for menu-images bucket
 -- Note: storage.objects/table policies depend on Supabase storage schema existing.
 -- Only add storage policies if your Supabase project includes the storage schema (it usually does).
 -- If your Supabase project has the storage schema, uncomment and run the following block:
 
--- DROP POLICY IF EXISTS storage_objects_select_menu_images ON storage.objects;
--- CREATE POLICY storage_objects_select_menu_images ON storage.objects FOR SELECT TO PUBLIC USING (bucket_id = 'menu-images');
+DROP POLICY IF EXISTS storage_objects_select_menu_images ON storage.objects;
+CREATE POLICY storage_objects_select_menu_images ON storage.objects FOR SELECT TO PUBLIC USING (bucket_id = 'menu-images');
 
--- DROP POLICY IF EXISTS storage_objects_insert_menu_images_auth ON storage.objects;
--- CREATE POLICY storage_objects_insert_menu_images_auth ON storage.objects FOR INSERT TO authenticated WITH CHECK (
---   bucket_id = 'menu-images' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
--- );
+DROP POLICY IF EXISTS storage_objects_insert_menu_images_auth ON storage.objects;
+CREATE POLICY storage_objects_insert_menu_images_auth ON storage.objects FOR INSERT TO authenticated WITH CHECK (
+  bucket_id = 'menu-images' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+);
 
--- DROP POLICY IF EXISTS storage_objects_update_own ON storage.objects;
--- CREATE POLICY storage_objects_update_own ON storage.objects FOR UPDATE TO authenticated USING (
---   bucket_id = 'menu-images' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
--- );
+DROP POLICY IF EXISTS storage_objects_update_own ON storage.objects;
+CREATE POLICY storage_objects_update_own ON storage.objects FOR UPDATE TO authenticated USING (
+  bucket_id = 'menu-images' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+);
 
 -- =========================
 -- Triggers for updated_at
