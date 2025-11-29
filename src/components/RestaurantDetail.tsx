@@ -14,7 +14,7 @@ interface Menu {
   status: string
   created_at: string
   photo_taken_at?: string | null
-  ocr_results?: {
+  ocr_results?: Array<{
     id: string
     image_id: string
     text: string
@@ -22,7 +22,7 @@ interface Menu {
     ocr_engine: number
     processing_time_ms: number
     created_at: string
-  }
+  }> | null
 }
 
 interface Restaurant {
@@ -167,8 +167,12 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
               <div key={menu.id} className="menu-card">
                 <div className="menu-image-container">
                   <img
-                    src={`https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80`}
+                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
                     alt="Menu Photo"
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
+                    }}
                   />
                   <div className="photo-timestamp">
                     <i className="ri-time-line"></i> {formatTimestamp(getEffectiveTimestamp(menu))}
@@ -190,18 +194,26 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                     </button>
                   </div>
                   
-                  {showOCR[menu.id] && menu.ocr_results ? (
+                  {showOCR[menu.id] && menu.ocr_results && (Array.isArray(menu.ocr_results) ? menu.ocr_results.length > 0 : true) ? (
                     <div className="ocr-text-block">
-                      {menu.ocr_results.text.split('\n').map((line, index) => (
-                        <div key={index}>{line}</div>
-                      ))}
+                      {(() => {
+                        const ocrData = Array.isArray(menu.ocr_results) ? menu.ocr_results[0] : menu.ocr_results
+                        const text = ocrData?.text || ''
+                        return text.split('\n').map((line, index) => (
+                          <div key={index}>{line}</div>
+                        ))
+                      })()}
                     </div>
                   ) : (
                     <div className="ocr-text-block">
-                      {menu.ocr_results ? (
-                        menu.ocr_results.text.split('\n').map((line, index) => (
-                          <div key={index}>{line}</div>
-                        ))
+                      {menu.ocr_results && (Array.isArray(menu.ocr_results) ? menu.ocr_results.length > 0 : true) ? (
+                        (() => {
+                          const ocrData = Array.isArray(menu.ocr_results) ? menu.ocr_results[0] : menu.ocr_results
+                          const text = ocrData?.text || ''
+                          return text.split('\n').map((line, index) => (
+                            <div key={index}>{line}</div>
+                          ))
+                        })()
                       ) : (
                         <>
                           • Masala Dosa - ₹45<br />

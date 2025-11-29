@@ -6,39 +6,139 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  const requestId = Math.random().toString(36).substring(7)
+  const startTime = Date.now()
+  
   try {
     const { slug } = params
+    console.log(`[Menus API] ${requestId} Request received:`, { 
+      slug,
+      url: request.url,
+      timestamp: new Date().toISOString()
+    })
     
     // First get the restaurant
+    console.log(`[Menus API] ${requestId} Looking up restaurant by slug:`, { slug })
+    
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id')
+      .select('id, name, slug')
       .eq('slug', slug)
       .single()
     
+    console.log(`[Menus API] ${requestId} Restaurant lookup completed:`, { 
+      found: !!restaurant,
+      restaurantError: restaurantError?.message,
+      restaurantId: (restaurant as any)?.id,
+      restaurantName: (restaurant as any)?.name,
+      lookupDuration: `${Date.now() - startTime}ms`
+    })
+    
     if (restaurantError || !restaurant) {
+      console.error(`[Menus API] ${requestId} Restaurant not found:`, {
+        slug,
+        error: restaurantError?.message,
+        code: restaurantError?.code
+      })
       throw new NotFoundError('Restaurant not found')
     }
     
-    // Get the menus for this restaurant
-    const { data, error } = await supabase
+    // At this point, restaurant is guaranteed to exist
+    const restaurantId = (restaurant as { id: string }).id
+    console.log(`[Menus API] ${requestId} Restaurant identified:`, { 
+      restaurantId, 
+      slug,
+      name: (restaurant as any)?.name
+    })
+    
+    // Get the menus for this restaurant (show both ocr_done and ocr_pending)
+    console.log(`[Menus API] ${requestId} Building menu_images query:`, {
+      restaurantId,
+      filters: {
+        restaurant_id: restaurantId,
+        status: ['ocr_done', 'ocr_pending']
+      }
+    })
+    
+    const query = supabase
       .from('menu_images')
       .select(`
-        *,
+        id,
+        restaurant_id,
+        storage_path,
+        mime,
+        status,
+        created_at,
         ocr_results(*)
       `)
-      .eq('restaurant_id', restaurant.id)
-      .eq('status', 'ocr_done')
-      .order('photo_taken_at', { ascending: false, nullsFirst: false })
+      .eq('restaurant_id', restaurantId)
+      .in('status', ['ocr_done', 'ocr_pending'])
       .order('created_at', { ascending: false })
       .limit(10)
     
+    console.log(`[Menus API] ${requestId} Query built, about to execute`)
+    
+    const { data, error } = await query
+    
+    const queryDuration = Date.now() - startTime
+    console.log(`[Menus API] ${requestId} Query executed:`, { 
+      duration: `${queryDuration}ms`,
+      error: error?.message,
+      errorCode: error?.code,
+      errorDetails: (error as any)?.details,
+      recordsReturned: data?.length || 0,
+      restaurantId
+    })
+    
     if (error) {
+      console.error(`[Menus API] ${requestId} Database error:`, {
+        message: error.message,
+        code: error.code,
+        details: (error as any)?.details,
+        restaurantId
+      })
       throw new DatabaseError('Failed to fetch menus', error)
     }
+
+    // Log detailed info about returned menus
+    if (data && data.length > 0) {
+      console.log(`[Menus API] ${requestId} Menus found:`, { 
+        count: data.length,
+        restaurantId
+      })
+      data.forEach((menu: any, index: number) => {
+        console.log(`[Menus API] ${requestId} Menu ${index + 1}:`, {
+          id: menu.id,
+          restaurant_id: menu.restaurant_id,
+          storage_path: menu.storage_path,
+          status: menu.status,
+          mime: menu.mime,
+          created_at: menu.created_at,
+          hasOcrResults: !!menu.ocr_results && menu.ocr_results.length > 0
+        })
+      })
+    } else {
+      console.log(`[Menus API] ${requestId} No menus found:`, { 
+        restaurantId, 
+        slug,
+        queryDuration: `${Date.now() - startTime}ms`
+      })
+    }
     
-    return NextResponse.json({ menus: data })
+    console.log(`[Menus API] ${requestId} Returning response:`, {
+      menuCount: data?.length || 0,
+      totalDuration: `${Date.now() - startTime}ms`,
+      restaurantId
+    })
+    
+    return NextResponse.json({ menus: data || [] })
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error(`[Menus API] ${requestId} Error caught:`, {
+      error: errorMsg,
+      fullError: JSON.stringify(error),
+      totalDuration: `${Date.now() - startTime}ms`
+    })
     return handleAPIError(error)
   }
 }

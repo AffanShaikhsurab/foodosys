@@ -35,10 +35,14 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
   useEffect(() => {
     const fetchMenus = async () => {
       try {
+        console.log(`[MenuDisplay] Fetching menus for restaurant: ${restaurantSlug}`)
         const data = await apiClient.getRestaurantMenus(restaurantSlug)
+        console.log(`[MenuDisplay] Received menus:`, data)
         setMenus(data.menus)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch menus')
+        const errMsg = err instanceof Error ? err.message : 'Failed to fetch menus'
+        console.error(`[MenuDisplay] Error fetching menus:`, errMsg)
+        setError(errMsg)
       } finally {
         setLoading(false)
       }
@@ -110,9 +114,13 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
           
           <div className="mb-4">
             <img
-              src={`https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80`}
+              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
               alt="Menu Photo"
               className="w-full h-64 object-cover rounded-lg"
+              onError={(e) => {
+                console.error(`Failed to load image from ${menu.storage_path}`, e)
+                ;(e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+              }}
             />
           </div>
           

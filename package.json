@@ -6,10 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup-db": "node scripts/setup-migration.js",
+    "verify-db": "node scripts/verify-database.js",
+    "debug-db": "node scripts/debug-database.js",
+    "seed-restaurants": "node scripts/seed-restaurants.js",
+    "test-api": "node scripts/test-api.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
     "formidable": "^3.5.1",
     "next": "14.0.0",

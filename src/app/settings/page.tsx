@@ -77,30 +77,30 @@ export default function ProfilePage() {
         const { data: contributions, error: contributionsError } = await supabase
           .from('daily_contributions')
           .select('*')
-          .eq('user_id', profile.id)
+          .eq('user_id', (profile as { id: string }).id)
 
         if (contributionsError) throw contributionsError
 
         // Calculate stats
-        const uploads = contributions?.filter(c => c.contribution_type === 'upload').length || 0
-        const helps = contributions?.length || 0
+        const uploads = (contributions as any[])?.filter((c: any) => c.contribution_type === 'upload').length || 0
+        const helps = (contributions as any[])?.length || 0
 
         // Get user rank from leaderboard
         const { data: leaderboardData, error: leaderboardError } = await supabase
           .from('leaderboard')
           .select('rank_position')
-          .eq('user_id', profile.id)
+          .eq('user_id', (profile as { id: string }).id)
           .single()
 
         if (leaderboardError && leaderboardError.code !== 'PGRST116') throw leaderboardError
 
-        const rank = leaderboardData?.rank_position || 0
+        const rank = (leaderboardData as any)?.rank_position || 0
 
         // Fetch user badges
         const { data: badges, error: badgesError } = await supabase
           .from('user_badges')
           .select('*')
-          .eq('user_id', profile.id)
+          .eq('user_id', (profile as { id: string }).id)
 
         if (badgesError) throw badgesError
 

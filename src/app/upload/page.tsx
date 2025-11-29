@@ -95,9 +95,10 @@ export default function UploadPage() {
           value={selectedRestaurant}
           onChange={(e) => setSelectedRestaurant(e.target.value)}
           className="location-select"
+          defaultValue="magna"
         >
           <option value="">Select Food Court...</option>
-          <option value="magna" selected>Magna Food Court (Detected)</option>
+          <option value="magna">Magna Food Court (Detected)</option>
           <option value="fiesta">Fiesta Food Court</option>
           <option value="oasis">Oasis Food Court</option>
           <option value="maitri">Maitri Food Court</option>
