@@ -31,6 +31,11 @@
   --status-error:   #FF8A80; /* Soft Red */
   --status-warn:    #FFCC80; /* Soft Orange */
 
+  /* Additional Colors */
+  --primary:        #4A5D4C; /* Sage - Primary buttons */
+  --text-secondary: #889287; /* Greyed Green - Secondary text */
+  --border-color:   rgba(0,0,0,0.1); /* Light border */
+
   /* ---------------- SHAPES ---------------- */
   /* Border Radius - "Super Round" */
   --radius-sm:     12px;    /* Tags, Badges */
@@ -76,8 +81,15 @@ body {
 .header {
   padding: 12px 24px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .header h1 {

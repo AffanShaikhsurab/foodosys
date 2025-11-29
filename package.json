@@ -11,22 +11,31 @@
     "verify-db": "node scripts/verify-database.js",
     "debug-db": "node scripts/debug-database.js",
     "seed-restaurants": "node scripts/seed-restaurants.js",
-    "test-api": "node scripts/test-api.js"
+    "test-api": "node scripts/test-api.js",
+    "run-menu-migration": "node scripts/run-menu-migration.js",
+    "test-menu-analysis": "node scripts/test-menu-analysis.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.38.0",
     "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
     "formidable": "^3.5.1",
+    "haversine-distance": "^1.2.4",
     "next": "14.0.0",
+    "ocr-space-api-wrapper": "^2.4.2",
     "react": "^18",
     "react-camera-pro": "^1.4.0",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "styled-components": "^5.3.11"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/styled-components": "^5.1.36",
+    "@typescript-eslint/eslint-plugin": "^8.48.0",
+    "@typescript-eslint/parser": "^8.48.0",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.0.0",

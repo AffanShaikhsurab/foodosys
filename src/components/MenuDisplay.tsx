@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp } from '@/lib/utils'
+import { ExtractedMenu, MenuSection, MenuItem } from '@/lib/types'
 
 interface Menu {
   id: string
@@ -19,6 +20,12 @@ interface Menu {
     language: string
     ocr_engine: number
     processing_time_ms: number
+    created_at: string
+  }
+  menus?: {
+    id: string
+    menu_date: string
+    content: ExtractedMenu
     created_at: string
   }
 }
@@ -124,14 +131,43 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
             />
           </div>
           
-          {menu.ocr_results && menu.ocr_results.text ? (
+          {menu.menus && menu.menus.content ? (
+            <div className="bg-subtle rounded-lg p-4">
+              <h4 className="font-medium mb-4">Menu Items:</h4>
+              {menu.menus.content.sections.map((section: MenuSection, sectionIndex: number) => (
+                <div key={sectionIndex} className="mb-6 last:mb-0">
+                  <h5 className="font-semibold text-lg mb-3 text-primary-dark">{section.name}</h5>
+                  <div className="space-y-2">
+                    {section.items.map((item: MenuItem, itemIndex: number) => (
+                      <div key={itemIndex} className="flex justify-between items-center py-2 border-b border-subtle last:border-0">
+                        <div className="flex-1">
+                          <span className="font-medium">{item.name}</span>
+                          {item.description && (
+                            <p className="text-sm text-muted mt-1">{item.description}</p>
+                          )}
+                        </div>
+                        {item.price && (
+                          <span className="font-semibold text-primary ml-4">{item.price}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {menu.menus.content.notes && (
+                <div className="mt-4 pt-4 border-t border-subtle">
+                  <p className="text-sm text-muted">{menu.menus.content.notes}</p>
+                </div>
+              )}
+            </div>
+          ) : menu.ocr_results && menu.ocr_results.text ? (
             <div className="bg-subtle rounded-lg p-4">
               <h4 className="font-medium mb-2">Extracted Text:</h4>
               <pre className="whitespace-pre-wrap text-sm">{menu.ocr_results.text}</pre>
             </div>
           ) : (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
-              <p>OCR processing not available for this menu.</p>
+              <p>Menu processing not available for this menu.</p>
             </div>
           )}
         </div>

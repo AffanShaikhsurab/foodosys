@@ -1,59 +1,155 @@
-import CourtCard from './CourtCard'
+'use client'
 
-export default function CourtList() {
-  // Sample data for food courts
-  const courts = [
-    {
-      id: 1,
-      name: 'Amoeba',
-      location: 'Near GEC-2',
-      distance: '900m',
-      status: 'available' as const,
-      imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
-      slug: 'amoeba'
-    },
-    {
-      id: 2,
-      name: 'Arena Court',
-      location: 'Near Multiplex',
-      distance: '700m',
-      status: 'missing' as const,
-      imageUrl: 'https://images.unsplash.com/photo-1554679665-f5537f187268?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
-      slug: 'arena'
-    },
-    {
-      id: 3,
-      name: 'Oasis',
-      location: 'Near ILI Building',
-      distance: '1.2km',
-      status: 'available' as const,
-      imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
-      slug: 'oasis'
-    },
-    {
-      id: 4,
-      name: 'Magna Food Court',
-      location: 'Inside GEC-2',
-      distance: '300m',
-      status: 'available' as const,
-      imageUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
-      slug: 'magna'
-    },
-    {
-      id: 5,
-      name: 'Fiesta Food Court',
-      location: 'Near Gate-2',
-      distance: '500m',
-      status: 'missing' as const,
-      imageUrl: 'https://images.unsplash.com/photo-1554679665-f5537f187268?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
-      slug: 'fiesta'
+import { useState, useEffect } from 'react'
+import CourtCard from './CourtCard'
+import { useLocation } from '@/hooks/useLocation'
+import { useDistance } from '@/hooks/useDistance'
+
+interface Restaurant {
+  id: string
+  name: string
+  location: string
+  latitude: number
+  longitude: number
+  slug: string
+  // Add other fields as needed
+}
+
+interface CourtListProps {
+  userLocation: any
+  locationLoading: boolean
+}
+
+export default function CourtList({ userLocation, locationLoading }: CourtListProps) {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { calculateDistance, formatDistance } = useDistance()
+
+  console.log('CourtList - userLocation prop:', userLocation)
+  console.log('CourtList - locationLoading prop:', locationLoading)
+
+  useEffect(() => {
+    async function fetchRestaurants() {
+      try {
+        const response = await fetch('/api/restaurants', { cache: 'no-store' })
+        const data = await response.json()
+
+        if (data.restaurants) {
+          setRestaurants(data.restaurants)
+        }
+      } catch (error) {
+        console.error('Error fetching restaurants:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  ]
+
+    fetchRestaurants()
+  }, [])
+
+  // Calculate distance for each restaurant
+  const restaurantsWithDistance = restaurants.map(restaurant => {
+    console.log('Processing restaurant:', restaurant.name, 'Lat:', restaurant.latitude, 'Lng:', restaurant.longitude);
+    console.log('User location:', userLocation);
+
+    if (!userLocation || userLocation.error) {
+      console.log('No user location or error, setting distance to Unknown');
+      return {
+        ...restaurant,
+        distance: 'Unknown'
+      }
+    }
+
+    const lat = typeof restaurant.latitude === 'string' ? parseFloat(restaurant.latitude) : restaurant.latitude;
+    const lng = typeof restaurant.longitude === 'string' ? parseFloat(restaurant.longitude) : restaurant.longitude;
+
+    if (!lat || !lng) {
+      console.log('Restaurant missing coordinates:', restaurant.name, restaurant);
+      return {
+        ...restaurant,
+        distance: 'Unknown'
+      }
+    }
+
+    const distanceInMeters = calculateDistance(
+      { latitude: userLocation.latitude, longitude: userLocation.longitude },
+      { latitude: lat, longitude: lng }
+    )
+
+    const formattedDistance = formatDistance(distanceInMeters);
+    console.log('Calculated distance:', formattedDistance);
+
+    return {
+      ...restaurant,
+      distance: formattedDistance
+    }
+  })
+
+  // Sort by distance (unknown distances go to the end)
+  const sortedRestaurants = [...restaurantsWithDistance].sort((a, b) => {
+    if (a.distance === 'Unknown') return 1
+    if (b.distance === 'Unknown') return -1
+
+    // Extract numeric value for comparison
+    const aValue = parseFloat(a.distance.replace(/[^\d.]/g, ''))
+    const bValue = parseFloat(b.distance.replace(/[^\d.]/g, ''))
+
+    return aValue - bValue
+  })
+
+  if (isLoading || locationLoading) {
+    return (
+      <div className="court-list">
+        <div className="loading-message">
+          {locationLoading ?
+            "Waiting for location permission..." :
+            "Loading restaurants..."
+          }
+        </div>
+      </div>
+    )
+  }
+
+  if (userLocation?.error) {
+    return (
+      <div className="court-list">
+        <div className="location-error">
+          <p>{userLocation.error}</p>
+          <p>Showing restaurants without distance information.</p>
+        </div>
+        {restaurants.map((restaurant) => (
+          <CourtCard
+            key={restaurant.id}
+            court={{
+              id: parseInt(restaurant.id),
+              name: restaurant.name,
+              location: restaurant.location,
+              distance: 'Unknown',
+              status: 'available' as const, // Default status
+              imageUrl: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80`,
+              slug: restaurant.slug
+            }}
+          />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="court-list">
-      {courts.map((court) => (
-        <CourtCard key={court.id} court={court} />
+      {sortedRestaurants.map((restaurant) => (
+        <CourtCard
+          key={restaurant.id}
+          court={{
+            id: parseInt(restaurant.id),
+            name: restaurant.name,
+            location: restaurant.location,
+            distance: restaurant.distance,
+            status: 'available' as const, // Default status
+            imageUrl: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80`,
+            slug: restaurant.slug
+          }}
+        />
       ))}
     </div>
   )

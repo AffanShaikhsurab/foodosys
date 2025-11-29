@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { ocrService } from '@/lib/ocr'
+import { menuAnalyzer } from '@/lib/menu-analyzer'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
 
@@ -391,7 +392,7 @@ export async function POST(request: NextRequest) {
       
       ocrResult = await ocrService.parseImageFromBase64(base64Image, {
         language: 'eng',
-        OCREngine: 3,
+        OCREngine: '1',
         isOverlayRequired: true
       })
       
@@ -549,6 +550,166 @@ export async function POST(request: NextRequest) {
           requestId,
           timestamp: new Date().toISOString()
         })
+
+        // Now analyze the menu using Gemini Flash model
+        console.log(`[Upload API] Starting menu analysis with Gemini:`, {
+          imageId: menuImageId,
+          ocrResultId,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+
+        let menuAnalysisSucceeded = false
+        let extractedMenu = null
+        let menuAnalysisError = null
+
+        try {
+          // First try to analyze from the image directly
+          console.log(`[Upload API] Analyzing menu from image:`, {
+            imageId: menuImageId,
+            requestId
+          })
+          
+          extractedMenu = await menuAnalyzer.analyzeMenuFromImage(base64Image)
+          menuAnalysisSucceeded = true
+          
+          console.log(`[Upload API] Menu analysis from image succeeded:`, {
+            imageId: menuImageId,
+            sectionsCount: extractedMenu.sections.length,
+            totalItems: extractedMenu.sections.reduce((sum, section) => sum + section.items.length, 0),
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+        } catch (imageAnalysisError) {
+          console.warn(`[Upload API] Image analysis failed, trying with OCR text:`, {
+            imageId: menuImageId,
+            error: imageAnalysisError instanceof Error ? imageAnalysisError.message : String(imageAnalysisError),
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+
+          // Fallback to analyzing from OCR text
+          try {
+            if (ocrResult && ocrResult.ParsedResults && ocrResult.ParsedResults[0]?.ParsedText) {
+              console.log(`[Upload API] Analyzing menu from OCR text:`, {
+                imageId: menuImageId,
+                textLength: ocrResult.ParsedResults[0].ParsedText.length,
+                requestId
+              })
+              
+              extractedMenu = await menuAnalyzer.analyzeMenuFromText(ocrResult.ParsedResults[0].ParsedText)
+              menuAnalysisSucceeded = true
+              
+              console.log(`[Upload API] Menu analysis from OCR text succeeded:`, {
+                imageId: menuImageId,
+                sectionsCount: extractedMenu.sections.length,
+                totalItems: extractedMenu.sections.reduce((sum, section) => sum + section.items.length, 0),
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            } else {
+              throw new Error('No OCR text available for fallback analysis')
+            }
+          } catch (textAnalysisError) {
+            menuAnalysisError = {
+              imageError: imageAnalysisError instanceof Error ? imageAnalysisError.message : String(imageAnalysisError),
+              textError: textAnalysisError instanceof Error ? textAnalysisError.message : String(textAnalysisError)
+            }
+            
+            console.error(`[Upload API] Both image and text analysis failed:`, {
+              imageId: menuImageId,
+              errors: menuAnalysisError,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+          }
+        }
+
+        // If menu analysis succeeded, validate and save the structured menu data
+        if (menuAnalysisSucceeded && extractedMenu) {
+          try {
+            // Validate and sanitize the menu data
+            const validatedMenu = sanitizeMenuData(extractedMenu)
+            
+            console.log(`[Upload API] Menu data validated successfully:`, {
+              imageId: menuImageId,
+              sectionsCount: validatedMenu.sections.length,
+              totalItems: validatedMenu.sections.reduce((sum, section) => sum + section.items.length, 0),
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+
+            // Delete existing menus for this restaurant (since menus change daily)
+            console.log(`[Upload API] Deleting existing menus for restaurant:`, {
+              restaurantId,
+              imageId: menuImageId,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+            
+            const { error: deleteError } = await supabaseAdmin
+              .from('menus')
+              .delete()
+              .eq('restaurant_id', restaurantId)
+
+            if (deleteError) {
+              console.error(`[Upload API] Failed to delete existing menus:`, {
+                error: deleteError.message,
+                restaurantId,
+                imageId: menuImageId,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+              // Continue anyway - the new menu will still be saved
+            }
+
+            // Save the new menu
+            console.log(`[Upload API] Saving new menu to database:`, {
+              restaurantId,
+              imageId: menuImageId,
+              sectionsCount: validatedMenu.sections.length,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+
+            const { data: savedMenu, error: menuSaveError } = await supabaseAdmin
+              .from('menus')
+              .insert([{
+                restaurant_id: restaurantId,
+                menu_image_id: menuImageId,
+                menu_date: new Date().toISOString().split('T')[0], // Today's date
+                content: validatedMenu,
+                created_at: new Date().toISOString()
+              }])
+              .select()
+              .single()
+
+            if (menuSaveError || !savedMenu) {
+              console.error(`[Upload API] Failed to save menu:`, {
+                error: menuSaveError?.message,
+                restaurantId,
+                imageId: menuImageId,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            } else {
+              console.log(`[Upload API] Menu saved successfully:`, {
+                menuId: (savedMenu as any).id,
+                restaurantId,
+                imageId: menuImageId,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            }
+          } catch (validationError) {
+            console.error(`[Upload API] Menu validation failed:`, {
+              error: validationError instanceof Error ? validationError.message : String(validationError),
+              imageId: menuImageId,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+          }
+        }
       }
     } else if (!ocrProcessingSucceeded) {
       console.log(`[Upload API] Skipping OCR result save - OCR processing did not succeed:`, {
@@ -629,4 +790,36 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleAPIError(error)
   }
+}
+
+function sanitizeMenuData(extractedMenu: any) {
+  // Basic sanitization to ensure the menu data is safe to store
+  if (!extractedMenu || typeof extractedMenu !== 'object') {
+    return { sections: [] }
+  }
+  
+  // Ensure sections is an array
+  if (!Array.isArray(extractedMenu.sections)) {
+    return { sections: [] }
+  }
+  
+  // Sanitize each section
+  const sanitizedSections = extractedMenu.sections.map((section: any) => {
+    if (!section || typeof section !== 'object') {
+      return { name: 'Unknown', items: [] }
+    }
+    
+    return {
+      name: String(section.name || 'Unknown').substring(0, 100),
+      items: Array.isArray(section.items) 
+        ? section.items.map((item: any) => ({
+            name: String(item.name || 'Unknown Item').substring(0, 100),
+            price: item.price ? String(item.price).substring(0, 20) : '',
+            description: item.description ? String(item.description).substring(0, 200) : ''
+          }))
+        : []
+    }
+  })
+  
+  return { sections: sanitizedSections }
 }
