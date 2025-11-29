@@ -25,6 +25,30 @@ export default function HeroSection({ location, isLoading, requestLocation }: He
     }
   }, [location])
 
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({ restaurantCount: 0, menuCount: 0 })
+  const { restaurantCount, menuCount } = stats
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/restaurants')
+        const data = await response.json()
+        if (data.restaurants) {
+          setStats({
+            restaurantCount: data.restaurants.length,
+            menuCount: data.restaurants.length
+          })
+        }
+      } catch (e) {
+        console.error('Error fetching stats:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
   const handleLocationClick = () => {
     // If location was previously denied, show instructions
     if (location?.error && location.error.includes('permission denied')) {

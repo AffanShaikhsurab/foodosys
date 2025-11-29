@@ -58,7 +58,7 @@ export default function CourtCard({ court }: CourtCardProps) {
         <div className="court-location">{court.location}</div>
         <div className={`court-status status-${court.status}`}>
           <div className="status-dot"></div>
-          {court.status === 'available' ? 'Menu Available' : 'Needs Update'}
+          {court.status === 'available' ? 'Menu Available' : 'Menu Not Available'}
         </div>
       </div>
       <button 

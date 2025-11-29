@@ -3,25 +3,10 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp } from '@/lib/utils'
-import { ExtractedMenu, MenuSection, MenuItem } from '@/lib/types'
+import { ExtractedMenu, MenuSection, MenuItem, MenuImage, OCRResult } from '@/lib/types'
 
-interface Menu {
-  id: string
-  restaurant_id: string
-  storage_path: string
-  mime: string
-  status: string
-  created_at: string
-  photo_taken_at?: string | null
-  ocr_results?: {
-    id: string
-    image_id: string
-    text: string
-    language: string
-    ocr_engine: number
-    processing_time_ms: number
-    created_at: string
-  }
+interface DisplayMenu extends MenuImage {
+  ocr_results?: OCRResult
   menus?: {
     id: string
     menu_date: string
@@ -35,7 +20,7 @@ interface MenuDisplayProps {
 }
 
 export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
-  const [menus, setMenus] = useState<Menu[]>([])
+  const [menus, setMenus] = useState<DisplayMenu[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,7 +30,7 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
         console.log(`[MenuDisplay] Fetching menus for restaurant: ${restaurantSlug}`)
         const data = await apiClient.getRestaurantMenus(restaurantSlug)
         console.log(`[MenuDisplay] Received menus:`, data)
-        setMenus(data.menus)
+        setMenus(data.menus as unknown as DisplayMenu[])
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Failed to fetch menus'
         console.error(`[MenuDisplay] Error fetching menus:`, errMsg)
@@ -118,7 +103,7 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
               </button>
             </div>
           </div>
-          
+
           <div className="mb-4">
             <img
               src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
@@ -126,11 +111,11 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
               className="w-full h-64 object-cover rounded-lg"
               onError={(e) => {
                 console.error(`Failed to load image from ${menu.storage_path}`, e)
-                ;(e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+                  ; (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
               }}
             />
           </div>
-          
+
           {menu.menus && menu.menus.content ? (
             <div className="bg-subtle rounded-lg p-4">
               <h4 className="font-medium mb-4">Menu Items:</h4>

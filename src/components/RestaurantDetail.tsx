@@ -5,24 +5,10 @@ import { useRouter } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp, groupImagesByDate } from '@/lib/utils'
+import { MenuImage, OCRResult } from '@/lib/types'
 
-interface Menu {
-  id: string
-  restaurant_id: string
-  storage_path: string
-  mime: string
-  status: string
-  created_at: string
-  photo_taken_at?: string | null
-  ocr_results?: Array<{
-    id: string
-    image_id: string
-    text: string
-    language: string
-    ocr_engine: number
-    processing_time_ms: number
-    created_at: string
-  }> | null
+interface DisplayMenu extends MenuImage {
+  ocr_results?: OCRResult
 }
 
 interface Restaurant {
@@ -37,7 +23,7 @@ interface Restaurant {
 export default function RestaurantDetail({ params }: { params: { slug: string } }) {
   const router = useRouter()
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
-  const [menus, setMenus] = useState<Menu[]>([])
+  const [menus, setMenus] = useState<DisplayMenu[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showOCR, setShowOCR] = useState<{ [key: string]: boolean }>({})
@@ -49,20 +35,20 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
       try {
         const restaurantsData = await apiClient.getRestaurants()
         const foundRestaurant = restaurantsData.restaurants.find((r: Restaurant) => r.slug === params.slug)
-        
+
         if (!foundRestaurant) {
           setError('Restaurant not found')
           return
         }
-        
+
         setRestaurant(foundRestaurant)
-        
+
         const menusData = await apiClient.getRestaurantMenus(params.slug)
         setMenus(menusData.menus)
-        
+
         const initialVotes: { [key: string]: number } = {}
         const initialUserVotes: { [key: string]: 'helpful' | 'wrong' | null } = {}
-        menusData.menus.forEach((menu: Menu) => {
+        menusData.menus.forEach((menu: DisplayMenu) => {
           initialVotes[menu.id] = Math.floor(Math.random() * 20) + 5
           initialUserVotes[menu.id] = null
         })
@@ -87,7 +73,7 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
     } else {
       const previousVote = userVotes[menuId]
       setUserVotes(prev => ({ ...prev, [menuId]: voteType }))
-      
+
       if (previousVote === 'helpful') {
         setHelpfulVotes(prev => ({ ...prev, [menuId]: prev[menuId] - 1 }))
       } else if (voteType === 'helpful') {
@@ -129,7 +115,7 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   return (
     <div className="app-container">
       {/* Back Button */}
-      <button 
+      <button
         onClick={() => router.back()}
         className="fixed top-6 left-6 z-10 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10"
       >
@@ -193,12 +179,11 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                       <i className="ri-pencil-line"></i> Edit
                     </button>
                   </div>
-                  
-                  {showOCR[menu.id] && menu.ocr_results && (Array.isArray(menu.ocr_results) ? menu.ocr_results.length > 0 : true) ? (
+
+                  {showOCR[menu.id] && menu.ocr_results ? (
                     <div className="ocr-text-block">
                       {(() => {
-                        const ocrData = Array.isArray(menu.ocr_results) ? menu.ocr_results[0] : menu.ocr_results
-                        const text = ocrData?.text || ''
+                        const text = menu.ocr_results?.text || ''
                         return text.split('\n').map((line, index) => (
                           <div key={index}>{line}</div>
                         ))
@@ -206,10 +191,9 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                     </div>
                   ) : (
                     <div className="ocr-text-block">
-                      {menu.ocr_results && (Array.isArray(menu.ocr_results) ? menu.ocr_results.length > 0 : true) ? (
+                      {menu.ocr_results ? (
                         (() => {
-                          const ocrData = Array.isArray(menu.ocr_results) ? menu.ocr_results[0] : menu.ocr_results
-                          const text = ocrData?.text || ''
+                          const text = menu.ocr_results?.text || ''
                           return text.split('\n').map((line, index) => (
                             <div key={index}>{line}</div>
                           ))

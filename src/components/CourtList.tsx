@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import CourtCard from './CourtCard'
 import { useLocation } from '@/hooks/useLocation'
 import { useDistance } from '@/hooks/useDistance'
+import { getMenuAvailabilityForRestaurants } from '@/lib/menu-availability'
 
 interface Restaurant {
   id: string
@@ -23,6 +24,7 @@ interface CourtListProps {
 export default function CourtList({ userLocation, locationLoading }: CourtListProps) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [menuAvailability, setMenuAvailability] = useState<Record<string, boolean>>({})
   const { calculateDistance, formatDistance } = useDistance()
 
   console.log('CourtList - userLocation prop:', userLocation)
@@ -36,6 +38,11 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
 
         if (data.restaurants) {
           setRestaurants(data.restaurants)
+          
+          // Check menu availability for all restaurants
+          const restaurantIds = data.restaurants.map((r: Restaurant) => r.id)
+          const availability = await getMenuAvailabilityForRestaurants(restaurantIds)
+          setMenuAvailability(availability)
         }
       } catch (error) {
         console.error('Error fetching restaurants:', error)
@@ -125,7 +132,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
               name: restaurant.name,
               location: restaurant.location,
               distance: 'Unknown',
-              status: 'available' as const, // Default status
+              status: menuAvailability[restaurant.id] ? 'available' as const : 'missing' as const,
               imageUrl: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80`,
               slug: restaurant.slug
             }}
@@ -145,7 +152,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
             name: restaurant.name,
             location: restaurant.location,
             distance: restaurant.distance,
-            status: 'available' as const, // Default status
+            status: menuAvailability[restaurant.id] ? 'available' as const : 'missing' as const,
             imageUrl: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80`,
             slug: restaurant.slug
           }}

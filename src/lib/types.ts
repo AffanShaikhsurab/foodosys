@@ -48,3 +48,19 @@ export interface PhotoUploadData {
   timestamp: string
   fileName?: string
 }
+
+export interface MenuItem {
+  name: string
+  description?: string
+  price?: string
+}
+
+export interface MenuSection {
+  name: string
+  items: MenuItem[]
+}
+
+export interface ExtractedMenu {
+  sections: MenuSection[]
+  notes?: string
+}

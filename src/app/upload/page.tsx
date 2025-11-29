@@ -135,7 +135,7 @@ export default function UploadPage() {
         <div className="tip-content">
           <i className="ri-lightbulb-flash-line tip-icon"></i>
           <div className="tip-text">
-            <strong>Tip:</strong> Ensure the prices and item names are clearly visible for the AI.
+            <strong>Tip:</strong> Hold your camera steady and ensure prices and item names are clearly visible for best results.
           </div>
         </div>
       </div>

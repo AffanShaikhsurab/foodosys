@@ -431,7 +431,7 @@ const OnboardingForm: React.FC = () => {
             onClick={handleSubmit}
             className="w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95"
           >
-            All Set, Let's Eat! <i className="ri-arrow-right-line"></i>
+            All Set, Let&apos;s Eat! <i className="ri-arrow-right-line"></i>
           </button>
         </div>
       </div>
