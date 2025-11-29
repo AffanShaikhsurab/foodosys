@@ -1,0 +1,338 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mysore Mess - Onboarding</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-body: #FDFDE8;
+            --bg-card: #FFFFFF;
+            --primary-dark: #2C3E2E;
+            --primary-light: #4A5D4C;
+            --accent-lime: #DCEB66;
+            --text-main: #1F291F;
+            --text-muted: #889287;
+            --shadow-soft: 0 8px 24px rgba(44, 62, 46, 0.08);
+            --shadow-float: 0 10px 30px rgba(44, 62, 46, 0.25);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .phone-frame {
+            width: 100%;
+            max-width: 390px;
+            height: 844px;
+            background-color: var(--bg-body);
+            border-radius: 40px;
+            position: relative;
+            overflow: hidden; /* Hide scrollbar for neatness */
+            border: 8px solid #1a1a1a;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Progress */
+        .header-progress {
+            padding: 32px 24px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-bar {
+            flex-grow: 1;
+            height: 6px;
+            background: rgba(44, 62, 46, 0.1);
+            border-radius: 10px;
+        }
+
+        .progress-fill {
+            width: 60%;
+            height: 100%;
+            background: var(--primary-dark);
+            border-radius: 10px;
+        }
+
+        .step-text {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Main Scrollable Content */
+        .scroll-content {
+            flex: 1;
+            padding: 0 24px 100px; /* Padding for bottom button */
+            overflow-y: auto;
+        }
+
+        .title-group { margin-bottom: 32px; }
+        .main-title { font-size: 28px; font-weight: 700; color: var(--primary-dark); line-height: 1.2; margin-bottom: 8px; }
+        .subtitle { font-size: 15px; color: var(--text-muted); line-height: 1.5; }
+
+        /* Avatar Picker */
+        .avatar-picker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .avatar-circle {
+            width: 100px;
+            height: 100px;
+            background-color: #F2F4F2;
+            border-radius: 50%;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: var(--text-muted);
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .avatar-circle:hover { border-color: var(--accent-lime); background-color: white; }
+
+        .edit-badge {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 32px;
+            height: 32px;
+            background: var(--primary-dark);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-lime);
+            font-size: 16px;
+            border: 3px solid var(--bg-body);
+        }
+
+        /* Form Fields */
+        .form-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .input-group { margin-bottom: 24px; }
+
+        .custom-input {
+            width: 100%;
+            padding: 18px;
+            border-radius: 20px;
+            border: 1px solid transparent;
+            background: white;
+            box-shadow: var(--shadow-soft);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            color: var(--primary-dark);
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .custom-input:focus {
+            border-color: var(--accent-lime);
+            box-shadow: 0 4px 12px rgba(220, 235, 102, 0.3);
+        }
+
+        /* Chips / Pills Selection */
+        .chips-container {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .chip-option {
+            padding: 12px 20px;
+            background: white;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            box-shadow: var(--shadow-soft);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chip-option.active {
+            background: var(--accent-lime);
+            color: var(--primary-dark);
+            border-color: var(--accent-lime);
+            font-weight: 700;
+        }
+
+        /* Diet Toggle Cards */
+        .diet-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .diet-card {
+            background: white;
+            padding: 16px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: var(--shadow-soft);
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: 0.2s;
+        }
+
+        .diet-card.selected {
+            border-color: var(--status-success, #4CAF50);
+            background: #F1F8E9;
+        }
+
+        .diet-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+        .diet-name { font-weight: 600; font-size: 14px; color: var(--primary-dark); }
+
+        /* Bottom Floating CTA */
+        .footer-action {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 24px;
+            background: linear-gradient(to top, var(--bg-body) 80%, rgba(253, 253, 232, 0));
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 18px;
+            background: var(--primary-dark);
+            color: white;
+            border: none;
+            border-radius: 32px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow-float);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .btn-primary:active { transform: scale(0.98); }
+
+    </style>
+</head>
+<body>
+
+    <div class="phone-frame">
+        
+        <!-- Progress Header -->
+        <div class="header-progress">
+            <span class="step-text">Step 2 of 3</span>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+
+        <!-- Scrollable Form -->
+        <div class="scroll-content">
+            
+            <div class="title-group">
+                <h1 class="main-title">Set up your<br>Campus Profile</h1>
+                <p class="subtitle">This helps us show you the nearest food courts and relevant menus.</p>
+            </div>
+
+            <!-- Avatar -->
+            <div class="avatar-picker">
+                <div class="avatar-circle">
+                    <i class="ri-user-smile-line"></i>
+                    <div class="edit-badge"><i class="ri-camera-fill"></i></div>
+                </div>
+            </div>
+
+            <!-- Name Input -->
+            <div class="input-group">
+                <label class="form-label">Display Name</label>
+                <input type="text" class="custom-input" placeholder="e.g. Rahul Kumar" value="Rahul">
+            </div>
+
+            <!-- Role Selection -->
+            <div class="input-group">
+                <label class="form-label">I am a...</label>
+                <div class="chips-container">
+                    <div class="chip-option active">
+                        <i class="ri-user-star-line"></i> Trainee
+                    </div>
+                    <div class="chip-option">
+                        <i class="ri-briefcase-4-line"></i> Employee
+                    </div>
+                </div>
+            </div>
+
+            <!-- Base Location (Crucial for distance sorting) -->
+            <div class="input-group">
+                <label class="form-label">Base Location (Zone)</label>
+                <p class="subtitle" style="font-size: 12px; margin-bottom: 12px; margin-top: -6px;">Where do you usually start walking from?</p>
+                <select class="custom-input" style="appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232C3E2E%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 16px center; background-size: 12px;">
+                    <option>Select Zone...</option>
+                    <option selected>GEC 2 (Training)</option>
+                    <option>ECC (Employee Care)</option>
+                    <option>Hostel Blocks (1-30)</option>
+                    <option>SDB Blocks</option>
+                </select>
+            </div>
+
+            <!-- Dietary Preference -->
+            <div class="input-group">
+                <label class="form-label">Food Preference</label>
+                <div class="diet-grid">
+                    <div class="diet-card selected">
+                        <span class="diet-icon">🥗</span>
+                        <span class="diet-name">Vegetarian</span>
+                    </div>
+                    <div class="diet-card">
+                        <span class="diet-icon">🍗</span>
+                        <span class="diet-name">Non-Veg</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Sticky Footer -->
+        <div class="footer-action">
+            <button class="btn-primary">
+                All Set, Let's Eat! <i class="ri-arrow-right-line"></i>
+            </button>
+        </div>
+
+    </div>
+
+</body>
+</html>

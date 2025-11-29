@@ -1,0 +1,504 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mysore Mess - Detail & Upload</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Design Tokens */
+            --bg-body: #FDFDE8;
+            --bg-card: #FFFFFF;
+            --primary-dark: #2C3E2E;
+            --accent-lime: #DCEB66;
+            --text-main: #1F291F;
+            --text-muted: #889287;
+            --text-light: #F2F4F2;
+            --radius-lg: 28px;
+            --radius-xl: 32px;
+            --shadow-soft: 0 8px 24px rgba(44, 62, 46, 0.08);
+            --shadow-float: 0 10px 30px rgba(44, 62, 46, 0.25);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #eee; /* Darker bg to show the phone frames */
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 40px;
+            flex-wrap: wrap;
+        }
+
+        /* Mobile Frame Simulator */
+        .phone-frame {
+            width: 100%;
+            max-width: 390px;
+            height: 844px;
+            background-color: var(--bg-body);
+            border-radius: 40px;
+            position: relative;
+            overflow: hidden;
+            border: 8px solid #1a1a1a;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+
+        /* --- SCREEN 1: RESTAURANT DETAIL --- */
+
+        /* Hero Image with Gradient Overlay */
+        .hero-header {
+            height: 280px;
+            background-image: url('https://images.unsplash.com/photo-1559339352-11d035aa65de?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(44,62,46,0) 0%, rgba(44,62,46,0.9) 100%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            padding: 24px;
+            width: 100%;
+            color: white;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .badge-translucent {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .hero-title { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .hero-subtitle { font-size: 14px; opacity: 0.9; display: flex; align-items: center; gap: 4px; }
+
+        /* Back Button */
+        .btn-back {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 10;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Menu Feed */
+        .content-scroll {
+            padding: 24px;
+            padding-bottom: 100px;
+            overflow-y: auto;
+            height: calc(100% - 280px);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .last-updated { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+        /* The Menu Card */
+        .menu-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 8px;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 24px;
+        }
+
+        .menu-image-container {
+            width: 100%;
+            height: 200px;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .menu-image-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Toggle between OCR and Image */
+        .view-toggle {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: var(--primary-dark);
+            color: var(--accent-lime);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        /* Parsed Text Area */
+        .ocr-content {
+            padding: 16px;
+        }
+
+        .ocr-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .ocr-title { font-weight: 700; color: var(--primary-dark); }
+        
+        .ocr-text-block {
+            font-family: 'JetBrains Mono', monospace; /* Monospace for list feel */
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-main);
+            background: #F9F9F9;
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        /* Voting/Feedback */
+        .feedback-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn-pill {
+            flex: 1;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #eee;
+            background: transparent;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .btn-pill.active { background: #E8F5E9; color: #2E7D32; border-color: transparent; }
+        .btn-pill.report { color: #D32F2F; }
+
+        /* --- SCREEN 2: UPLOAD FLOW --- */
+        
+        .upload-header {
+            padding: 24px;
+            padding-top: 60px;
+        }
+        
+        .upload-title { font-size: 24px; font-weight: 700; color: var(--primary-dark); margin-bottom: 8px; }
+        .upload-subtitle { font-size: 15px; color: var(--text-muted); line-height: 1.4; }
+
+        /* Form Elements */
+        .form-group {
+            padding: 0 24px;
+            margin-bottom: 24px;
+        }
+
+        .label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .location-select {
+            width: 100%;
+            padding: 16px;
+            border-radius: 20px;
+            background: white;
+            border: none;
+            box-shadow: var(--shadow-soft);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            color: var(--primary-dark);
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232C3E2E%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px top 50%;
+            background-size: 12px auto;
+        }
+
+        /* Camera Zone */
+        .camera-zone {
+            margin: 0 24px;
+            height: 320px;
+            background: #2C3E2E;
+            border-radius: 32px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .camera-preview {
+            position: absolute;
+            inset: 0;
+            opacity: 0.3;
+            background-image: url('https://images.unsplash.com/photo-1574126154517-d1e0d89e7344?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80');
+            background-size: cover;
+            filter: grayscale(100%);
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-lime);
+            box-shadow: 0 0 20px var(--accent-lime);
+            animation: scan 3s infinite linear;
+            z-index: 2;
+        }
+
+        @keyframes scan {
+            0% { top: 10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 90%; opacity: 0; }
+        }
+
+        .camera-ui {
+            z-index: 3;
+            text-align: center;
+            color: white;
+        }
+
+        .camera-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--accent-lime);
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 16px;
+            box-shadow: 0 0 0 8px rgba(220, 235, 102, 0.2);
+        }
+
+        .camera-text {
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* Floating CTA */
+        .cta-container {
+            position: absolute;
+            bottom: 32px;
+            left: 24px;
+            right: 24px;
+        }
+
+        .btn-block {
+            width: 100%;
+            background: var(--primary-dark);
+            color: white;
+            padding: 18px;
+            border-radius: 999px; /* Pill */
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            box-shadow: var(--shadow-float);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Floating Action Confirmation */
+        .toast {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-lime);
+            color: var(--primary-dark);
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: var(--shadow-float);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 20;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- SCREEN 1: RESTAURANT DETAIL -->
+    <div class="phone-frame">
+        <button class="btn-back"><i class="ri-arrow-left-line"></i></button>
+
+        <!-- Hero -->
+        <div class="hero-header">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <div class="hero-badges">
+                    <span class="badge-translucent">GEC-2</span>
+                    <span class="badge-translucent" style="background: var(--accent-lime); color: var(--primary-dark);">Open Now</span>
+                </div>
+                <div class="hero-title">Magna Food Court</div>
+                <div class="hero-subtitle">
+                    <i class="ri-map-pin-line"></i> Inside GEC 2 Academic Block
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content-scroll">
+            <div class="section-header">
+                <h3 style="font-size: 18px; color: var(--primary-dark);">Today's Menu</h3>
+                <span class="last-updated">Updated 20m ago</span>
+            </div>
+
+            <!-- The OCR Card -->
+            <div class="menu-card">
+                <div class="menu-image-container">
+                    <img src="https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="Menu Photo">
+                    <div class="view-toggle">
+                        <i class="ri-text"></i> View Text
+                    </div>
+                </div>
+
+                <div class="ocr-content">
+                    <div class="ocr-header">
+                        <span class="ocr-title">South Indian Counter</span>
+                        <button style="border:none; background:none; color: var(--text-muted); cursor:pointer;">
+                            <i class="ri-pencil-line"></i> Edit
+                        </button>
+                    </div>
+                    <!-- Monospace font for "receipt" feel -->
+                    <div class="ocr-text-block">
+                        • Masala Dosa - ₹45<br>
+                        • Idli Vada Set - ₹30<br>
+                        • Veg Pulao - ₹40<br>
+                        • Curd Rice - ₹25<br>
+                        • Filter Coffee - ₹10
+                    </div>
+
+                    <div class="feedback-row">
+                        <button class="btn-pill active"><i class="ri-thumb-up-line"></i> Helpful (12)</button>
+                        <button class="btn-pill report"><i class="ri-flag-line"></i> Wrong</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State for Dinner -->
+            <div class="menu-card" style="opacity: 0.6;">
+                <div class="ocr-content" style="text-align: center; padding: 32px 16px;">
+                    <i class="ri-moon-line" style="font-size: 24px; color: var(--text-muted); margin-bottom: 8px;"></i>
+                    <h4 style="color: var(--primary-dark);">Dinner Menu</h4>
+                    <p style="font-size: 13px; color: var(--text-muted);">Not uploaded yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: UPLOAD FLOW -->
+    <div class="phone-frame">
+        <button class="btn-back" style="background: #eee; color: #333;"><i class="ri-close-line"></i></button>
+
+        <div class="upload-header">
+            <div class="upload-title">Update Menu</div>
+            <div class="upload-subtitle">You're helping ~30 students avoid a long walk. Nice! 🌱</div>
+        </div>
+
+        <div class="form-group">
+            <label class="label">Where are you?</label>
+            <select class="location-select">
+                <option>Select Food Court...</option>
+                <option selected>Magna Food Court (Detected)</option>
+                <option>Fiesta Food Court</option>
+                <option>Oasis Food Court</option>
+                <option>Maitri Food Court</option>
+            </select>
+        </div>
+
+        <!-- Camera Interface -->
+        <div class="camera-zone">
+            <div class="camera-preview"></div> <!-- Simulated camera feed -->
+            <div class="scan-line"></div> <!-- Animation -->
+            
+            <div class="camera-ui">
+                <div class="camera-btn">
+                    <i class="ri-camera-fill"></i>
+                </div>
+                <div class="camera-text">Tap to Scan Menu</div>
+            </div>
+        </div>
+
+        <div style="padding: 24px;">
+            <div style="display:flex; gap: 12px; align-items:center; background: #fff; padding: 12px; border-radius: 16px; box-shadow: var(--shadow-soft);">
+                <i class="ri-lightbulb-flash-line" style="color: var(--accent-lime); font-size: 20px; background: var(--primary-dark); padding: 8px; border-radius: 50%;"></i>
+                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.3;">
+                    <strong>Tip:</strong> Ensure the prices and item names are clearly visible for the AI.
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Action -->
+        <div class="cta-container">
+            <button class="btn-block">
+                Upload & Process <i class="ri-arrow-right-line"></i>
+            </button>
+        </div>
+
+        <!-- Success Toast Simulation -->
+        <!-- <div class="toast">
+            <i class="ri-checkbox-circle-fill"></i> Uploaded Successfully!
+        </div> -->
+    </div>
+
+</body>
+</html>
