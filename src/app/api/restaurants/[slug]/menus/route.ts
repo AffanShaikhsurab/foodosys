@@ -69,7 +69,7 @@ export async function GET(
         mime,
         status,
         created_at,
-        ocr_results(*)
+        ocr_results!ocr_results_image_id_fkey(*)
       `)
       .eq('restaurant_id', restaurantId)
       .in('status', ['ocr_done', 'ocr_pending'])
