@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import MenuUpload from '@/components/MenuUpload'
 import { getCurrentUser } from '@/lib/auth'
+import { apiClient } from '@/lib/api'
+import type { Restaurant } from '@/lib/types'
 
 export default function UploadPage() {
   const router = useRouter()
@@ -14,6 +16,7 @@ export default function UploadPage() {
   const [showToast, setShowToast] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -24,6 +27,10 @@ export default function UploadPage() {
           return
         }
         setIsAuthenticated(true)
+        
+        // Fetch all restaurants
+        const restaurantsData = await apiClient.getRestaurants()
+        setRestaurants(restaurantsData.restaurants)
       } catch (error) {
         console.error('Error checking authentication:', error)
         router.push('/auth?redirectTo=/upload')
@@ -95,13 +102,13 @@ export default function UploadPage() {
           value={selectedRestaurant}
           onChange={(e) => setSelectedRestaurant(e.target.value)}
           className="location-select"
-          defaultValue="magna"
         >
           <option value="">Select Food Court...</option>
-          <option value="magna">Magna Food Court (Detected)</option>
-          <option value="fiesta">Fiesta Food Court</option>
-          <option value="oasis">Oasis Food Court</option>
-          <option value="maitri">Maitri Food Court</option>
+          {restaurants.map((restaurant) => (
+            <option key={restaurant.slug} value={restaurant.slug}>
+              {restaurant.name}
+            </option>
+          ))}
         </select>
       </div>
 
