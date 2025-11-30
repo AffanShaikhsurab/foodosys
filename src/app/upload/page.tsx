@@ -27,7 +27,7 @@ export default function UploadPage() {
           return
         }
         setIsAuthenticated(true)
-        
+
         // Fetch all restaurants
         const restaurantsData = await apiClient.getRestaurants()
         setRestaurants(restaurantsData.restaurants)
@@ -46,7 +46,7 @@ export default function UploadPage() {
     setUploadStatus('success')
     setMessage('Uploaded Successfully!')
     setShowToast(true)
-    
+
     setTimeout(() => {
       setShowToast(false)
       router.push('/')
@@ -57,7 +57,7 @@ export default function UploadPage() {
     setUploadStatus('error')
     setMessage(`Upload failed: ${error.message}`)
     setShowToast(true)
-    
+
     setTimeout(() => {
       setShowToast(false)
     }, 3000)
@@ -83,18 +83,18 @@ export default function UploadPage() {
   return (
     <div className="app-container" style={{ position: 'relative' }}>
       {/* Back Button */}
-      <button 
+      <button
         onClick={() => router.back()}
-        className="fixed top-6 left-6 z-10 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700"
+        className="fixed top-6 left-6 z-10 w-10 h-10 bg-[#E8E8E8] rounded-full flex items-center justify-center shadow-sm"
       >
-        <i className="ri-close-line"></i>
+        <i className="ri-arrow-left-line text-xl text-[#2C3E2E]"></i>
       </button>
 
-      <div className="upload-header">
+      <div style={{ paddingTop: '5rem' }} className="upload-header">
         <div className="upload-title">Update Menu</div>
         <div className="upload-subtitle">You&apos;re helping ~30 students avoid a long walk. Nice! 🌱</div>
       </div>
-      
+
       {/* Restaurant Selection */}
       <div className="form-group">
         <label className="label">Where are you?</label>
@@ -146,7 +146,7 @@ export default function UploadPage() {
           <i className="ri-checkbox-circle-fill"></i> {message}
         </div>
       )}
-      
+
       <BottomNav />
     </div>
   )

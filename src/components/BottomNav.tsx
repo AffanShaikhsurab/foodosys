@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
+import { HomeRounded, PersonRounded, CameraAltRounded, LockRounded } from '@mui/icons-material'
 
 export default function BottomNav() {
-  const [activeNav, setActiveNav] = useState('home')
+  const pathname = usePathname()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -28,6 +29,13 @@ export default function BottomNav() {
 
     checkAuth()
   }, [])
+
+  const isActive = (path: string) => {
+    if (path === '/' && pathname === '/') return true
+    if (path !== '/' && pathname?.startsWith(path)) return true
+    return false
+  }
+
   if (isLoading) {
     return (
       <div className="bottom-nav-container">
@@ -44,32 +52,66 @@ export default function BottomNav() {
   return (
     <div className="bottom-nav-container">
       <div className="bottom-nav">
-        <Link href="/" className={`nav-item ${activeNav === 'home' ? 'active' : ''}`} onClick={() => setActiveNav('home')}>
-          <i className="ri-home-4-fill"></i>
+        <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <HomeRounded sx={{ fontSize: 28 }} />
+            {/* Home Count Badge */}
+            <span style={{
+              position: 'absolute',
+              top: '-4px',
+              right: '-4px',
+              backgroundColor: '#FF8A80',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 'bold',
+              height: '16px',
+              width: '16px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid var(--primary-dark)',
+              zIndex: 10
+            }}>3</span>
+          </div>
           <span className="nav-label">Home</span>
         </Link>
 
         {/* Center "Upload" FAB */}
         {isAuthenticated ? (
           <Link href="/upload" className="nav-upload">
-            <i className="ri-camera-fill"></i>
+            <CameraAltRounded sx={{ fontSize: 28 }} />
             <span className="nav-label">Scan</span>
           </Link>
         ) : (
           <Link href="/auth" className="nav-upload" style={{ backgroundColor: '#FEF3C7' }}>
-            <i className="ri-lock-line" style={{ color: '#92400E' }}></i>
+            <LockRounded sx={{ fontSize: 24, color: '#92400E' }} />
             <span className="nav-label" style={{ color: '#92400E' }}>Sign In</span>
           </Link>
         )}
 
         {isAuthenticated ? (
-          <Link href="/settings" className={`nav-item ${activeNav === 'profile' ? 'active' : ''}`} onClick={() => setActiveNav('profile')}>
-            <i className="ri-user-fill"></i>
+          <Link href="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <PersonRounded sx={{ fontSize: 28 }} />
+              {/* Profile Count Badge */}
+              <span style={{
+                position: 'absolute',
+                top: '0px',
+                right: '0px',
+                backgroundColor: '#DCEB66',
+                height: '8px',
+                width: '8px',
+                borderRadius: '50%',
+                border: '1px solid var(--primary-dark)',
+                zIndex: 10
+              }}></span>
+            </div>
             <span className="nav-label">Profile</span>
           </Link>
         ) : (
-          <Link href="/auth" className={`nav-item ${activeNav === 'settings' ? 'active' : ''}`} onClick={() => setActiveNav('settings')}>
-            <i className="ri-user-line"></i>
+          <Link href="/auth" className={`nav-item ${isActive('/auth') ? 'active' : ''}`}>
+            <PersonRounded sx={{ fontSize: 28 }} />
             <span className="nav-label">Profile</span>
           </Link>
         )}

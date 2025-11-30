@@ -6,6 +6,7 @@ import BottomNav from '@/components/BottomNav'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp, groupImagesByDate } from '@/lib/utils'
 import { MenuImage, OCRResult } from '@/lib/types'
+import ImageViewer from '@/components/ImageViewer'
 
 interface DisplayMenu extends MenuImage {
   ocr_results?: OCRResult
@@ -29,6 +30,8 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   const [showOCR, setShowOCR] = useState<{ [key: string]: boolean }>({})
   const [helpfulVotes, setHelpfulVotes] = useState<{ [key: string]: number }>({})
   const [userVotes, setUserVotes] = useState<{ [key: string]: 'helpful' | 'wrong' | null }>({})
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,6 +158,12 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                   <img
                     src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
                     alt="Menu Photo"
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
+                      setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
+                      setViewerOpen(true)
+                    }}
                     onError={(e) => {
                       // Fallback to placeholder if image fails to load
                       e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
@@ -240,6 +249,18 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
       </div>
 
       <BottomNav />
+
+      {selectedImage && (
+        <ImageViewer
+          imageUrl={selectedImage.url}
+          alt={selectedImage.alt}
+          isOpen={viewerOpen}
+          onClose={() => {
+            setViewerOpen(false)
+            setSelectedImage(null)
+          }}
+        />
+      )}
 
       <style jsx>{`
         .hero-header {
