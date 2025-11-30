@@ -46,8 +46,8 @@ export async function getMenuAvailabilityForRestaurants(restaurantIds: string[])
     })
     
     // Mark restaurants with menus as true
-    if (data) {
-      data.forEach(item => {
+    if (data && Array.isArray(data)) {
+      data.forEach((item: any) => {
         availability[item.restaurant_id] = true
       })
     }
