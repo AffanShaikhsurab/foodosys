@@ -27,7 +27,7 @@ function haversineDistanceKM(lat1Deg, lon1Deg, lat2Deg, lon2Deg) {
 }
 
 // Test with the example coordinates from StackOverflow
-const d = haversineDistanceKM(12.3659908, 76.6003301, 12.3648177, 76.6018246);
+const d = haversineDistanceKM(12.3653811, 76.5992427, 12.3648177, 76.6018246);
 console.log('Distance between example coordinates:', d.toFixed(2), 'km');
 
 // Add your specific test coordinates here
