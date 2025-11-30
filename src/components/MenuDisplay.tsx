@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp } from '@/lib/utils'
 import { ExtractedMenu, MenuSection, MenuItem, MenuImage, OCRResult } from '@/lib/types'
+import ImageViewer from './ImageViewer'
 
 interface DisplayMenu extends MenuImage {
   ocr_results?: OCRResult
@@ -23,6 +24,8 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
   const [menus, setMenus] = useState<DisplayMenu[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null)
 
   useEffect(() => {
     const fetchMenus = async () => {
@@ -95,12 +98,25 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
               )}
             </div>
             <div className="flex gap-2">
-              <button className="text-primary hover:text-primary-dark">
+              <button
+                onClick={() => {
+                  const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
+                  setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
+                  setViewerOpen(true)
+                }}
+                className="text-primary hover:text-primary-dark transition-colors"
+                title="View full screen"
+              >
                 <i className="ri-eye-line text-xl"></i>
               </button>
-              <button className="text-primary hover:text-primary-dark">
+              <a
+                href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
+                download
+                className="text-primary hover:text-primary-dark transition-colors"
+                title="Download image"
+              >
                 <i className="ri-download-line text-xl"></i>
-              </button>
+              </a>
             </div>
           </div>
 
@@ -108,7 +124,12 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
             <img
               src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
               alt="Menu Photo"
-              className="w-full h-64 object-cover rounded-lg"
+              className="w-full h-64 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => {
+                const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
+                setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
+                setViewerOpen(true)
+              }}
               onError={(e) => {
                 console.error(`Failed to load image from ${menu.storage_path}`, e)
                   ; (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
@@ -157,6 +178,19 @@ export default function MenuDisplay({ restaurantSlug }: MenuDisplayProps) {
           )}
         </div>
       ))}
+
+      {/* Image Viewer Modal */}
+      {selectedImage && (
+        <ImageViewer
+          imageUrl={selectedImage.url}
+          alt={selectedImage.alt}
+          isOpen={viewerOpen}
+          onClose={() => {
+            setViewerOpen(false)
+            setSelectedImage(null)
+          }}
+        />
+      )}
     </div>
   )
 }

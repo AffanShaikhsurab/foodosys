@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { signIn, signUp } from '@/lib/auth'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { logAuth, logger } from '@/lib/logger'
 
 export default function AuthForm() {
@@ -10,6 +11,7 @@ export default function AuthForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -24,17 +26,22 @@ export default function AuthForm() {
       isSignUp
     })
     logger.componentMount('AuthPage')
-    
+
     return () => {
       logAuth('Auth page component unmounted', { operation: 'component_unmount' })
       logger.componentUnmount('AuthPage')
     }
   }, [redirectTo, isSignUp])
 
+  // Reset terms acceptance when switching between sign in and sign up
+  useEffect(() => {
+    setTermsAccepted(false)
+  }, [isSignUp])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const startTime = Date.now()
-    
+
     logAuth('Form submission started', {
       operation: 'form_submit_start',
       isSignUp,
@@ -42,7 +49,7 @@ export default function AuthForm() {
       hasDisplayName: !!displayName,
       redirectTo
     })
-    
+
     setLoading(true)
     setError('')
 
@@ -53,16 +60,16 @@ export default function AuthForm() {
           email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
           hasDisplayName: !!displayName
         })
-        
+
         await signUp(email, password, { display_name: displayName })
-        
+
         const processingTime = Date.now() - startTime
         logAuth('Sign up process completed successfully', {
           operation: 'sign_up_process_success',
           email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
           processingTime
         })
-        
+
         setError('Check your email to verify your account')
       } else {
         logAuth('Starting sign in process', {
@@ -70,9 +77,9 @@ export default function AuthForm() {
           email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
           redirectTo
         })
-        
+
         await signIn(email, password)
-        
+
         const processingTime = Date.now() - startTime
         logAuth('Sign in process completed successfully', {
           operation: 'sign_in_process_success',
@@ -80,13 +87,13 @@ export default function AuthForm() {
           redirectTo,
           processingTime
         })
-        
+
         router.push(redirectTo)
       }
     } catch (err: any) {
       const processingTime = Date.now() - startTime
       const errorMessage = err.message || 'An error occurred'
-      
+
       logAuth('Form submission failed', {
         operation: 'form_submit_error',
         isSignUp,
@@ -95,7 +102,7 @@ export default function AuthForm() {
         errorMessage,
         errorType: err.constructor?.name || 'Unknown'
       })
-      
+
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -156,10 +163,35 @@ export default function AuthForm() {
               <div className="text-red-500 text-sm text-center">{error}</div>
             )}
 
+            {/* Terms and Conditions Checkbox */}
+            {isSignUp && (
+              <div className="flex items-start gap-3 p-4 bg-[#FEF3C7] rounded-[16px] border border-[#DCEB66]">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#2C3E2E] focus:ring-[#DCEB66] cursor-pointer"
+                  required
+                />
+                <label htmlFor="terms" className="text-sm text-[#1F291F] leading-relaxed cursor-pointer">
+                  I accept the{' '}
+                  <Link
+                    href="/terms"
+                    className="text-[#2C3E2E] font-semibold underline hover:text-[#1F291F] transition-colors"
+                    target="_blank"
+                  >
+                    Terms and Conditions
+                  </Link>
+                  {' '}and acknowledge that this platform is independent and not affiliated with Infosys Limited.
+                </label>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#2C3E2E] text-white py-3 rounded-[20px] font-medium hover:bg-[#1F291F] transition-colors disabled:opacity-50"
+              disabled={loading || (isSignUp && !termsAccepted)}
+              className="w-full bg-[#2C3E2E] text-white py-3 rounded-[20px] font-medium hover:bg-[#1F291F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
             </button>

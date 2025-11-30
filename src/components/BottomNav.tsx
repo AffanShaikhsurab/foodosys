@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getCurrentUser, signOut } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 
 export default function BottomNav() {
   const [activeNav, setActiveNav] = useState('home')
@@ -28,18 +28,6 @@ export default function BottomNav() {
 
     checkAuth()
   }, [])
-
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-      setIsAuthenticated(false)
-      setUserEmail(null)
-      router.push('/')
-    } catch (error) {
-      console.error('Sign out error:', error)
-    }
-  }
-  
   if (isLoading) {
     return (
       <div className="bottom-nav-container">
@@ -60,7 +48,7 @@ export default function BottomNav() {
           <i className="ri-home-4-fill"></i>
           <span className="nav-label">Home</span>
         </Link>
-        
+
         {/* Center "Upload" FAB */}
         {isAuthenticated ? (
           <Link href="/upload" className="nav-upload">
@@ -75,10 +63,10 @@ export default function BottomNav() {
         )}
 
         {isAuthenticated ? (
-          <div className="nav-item" onClick={handleSignOut} style={{ cursor: 'pointer' }}>
-            <i className="ri-logout-box-r-line"></i>
-            <span className="nav-label">Sign Out</span>
-          </div>
+          <Link href="/settings" className={`nav-item ${activeNav === 'profile' ? 'active' : ''}`} onClick={() => setActiveNav('profile')}>
+            <i className="ri-user-fill"></i>
+            <span className="nav-label">Profile</span>
+          </Link>
         ) : (
           <Link href="/auth" className={`nav-item ${activeNav === 'settings' ? 'active' : ''}`} onClick={() => setActiveNav('settings')}>
             <i className="ri-user-line"></i>
@@ -86,7 +74,7 @@ export default function BottomNav() {
           </Link>
         )}
       </div>
-      
+
       {/* User Email Display */}
       {isAuthenticated && userEmail && (
         <div style={{
