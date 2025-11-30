@@ -36,8 +36,8 @@ export default function TermsAndConditions() {
                         <section>
                             <h2 className="text-2xl font-bold text-[#2C3E2E] mb-4">1. Introduction and Acceptance</h2>
                             <p className="mb-4 leading-relaxed">
-                                Welcome to FoodoSys ("we," "our," or "the Platform"). By accessing or using this Platform,
-                                you ("User" or "you") agree to be bound by these Terms and Conditions ("Terms"). If you do
+                                Welcome to FoodoSys (&quot;we,&quot; &quot;our,&quot; or &quot;the Platform&quot;). By accessing or using this Platform,
+                                you (&quot;User&quot; or &quot;you&quot;) agree to be bound by these Terms and Conditions (&quot;Terms&quot;). If you do
                                 not agree to these Terms, please do not use the Platform.
                             </p>
                             <p className="mb-4 leading-relaxed">
@@ -84,7 +84,7 @@ export default function TermsAndConditions() {
                                 <li>Use the Platform for any unlawful purpose or in violation of these Terms</li>
                                 <li>Upload, post, or transmit any content that infringes intellectual property rights</li>
                                 <li>Attempt to gain unauthorized access to the Platform or its related systems</li>
-                                <li>Interfere with or disrupt the Platform's functionality or servers</li>
+                                <li>Interfere with or disrupt the Platform&apos;s functionality or servers</li>
                                 <li>Impersonate any person or entity or misrepresent affiliation with any organization</li>
                                 <li>Collect or store personal data of other users without explicit consent</li>
                                 <li>Use the Platform to distribute spam, malware, or harmful content</li>
@@ -129,7 +129,7 @@ export default function TermsAndConditions() {
                         <section>
                             <h2 className="text-2xl font-bold text-[#2C3E2E] mb-4">5. Intellectual Property Rights</h2>
                             <p className="mb-4 leading-relaxed">
-                                <strong>5.1 Platform Ownership:</strong> The Platform's design, code, features, and original
+                                <strong>5.1 Platform Ownership:</strong> The Platform&apos;s design, code, features, and original
                                 content are owned by FoodoSys and protected by copyright, trademark, and other intellectual
                                 property laws.
                             </p>
@@ -148,7 +148,7 @@ export default function TermsAndConditions() {
                         <section>
                             <h2 className="text-2xl font-bold text-[#2C3E2E] mb-4">6. Disclaimers and Limitations</h2>
                             <p className="mb-4 leading-relaxed">
-                                <strong>6.1 "As Is" Service:</strong> The Platform is provided "as is" and "as available" without
+                                <strong>6.1 &quot;As Is&quot; Service:</strong> The Platform is provided &quot;as is&quot; and &quot;as available&quot; without
                                 warranties of any kind, either express or implied, including but not limited to warranties of
                                 merchantability, fitness for a particular purpose, or non-infringement.
                             </p>
@@ -231,7 +231,7 @@ export default function TermsAndConditions() {
                         <section>
                             <h2 className="text-2xl font-bold text-[#2C3E2E] mb-4">11. Contact Information</h2>
                             <p className="mb-4 leading-relaxed">
-                                For questions, concerns, or notices regarding these Terms, please contact us through the Platform's
+                                For questions, concerns, or notices regarding these Terms, please contact us through the Platform&apos;s
                                 support channels or feedback mechanisms.
                             </p>
                         </section>
@@ -267,7 +267,7 @@ export default function TermsAndConditions() {
                         {/* Acceptance */}
                         <section className="mt-8 pt-8 border-t-2 border-gray-200">
                             <p className="text-center text-lg font-medium text-[#2C3E2E]">
-                                By clicking "I Accept" or by using the Platform, you acknowledge that you have read,
+                                By clicking &quot;I Accept&quot; or by using the Platform, you acknowledge that you have read,
                                 understood, and agree to be bound by these Terms and Conditions.
                             </p>
                         </section>

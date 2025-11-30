@@ -92,7 +92,7 @@ export default function UploadPage() {
 
       <div style={{ paddingTop: '5rem' }} className="upload-header">
         <div className="upload-title">Update Menu</div>
-        <div className="upload-subtitle">You're helping ~30 students avoid a long walk. Nice! 🌱</div>
+        <div className="upload-subtitle">You&apos;re helping ~30 students avoid a long walk. Nice! 🌱</div>
       </div>
 
       {/* Restaurant Selection */}

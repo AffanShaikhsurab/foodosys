@@ -15,7 +15,7 @@ export default function NotFound() {
             <h1 className="text-3xl font-bold text-[#2C3E2E] mb-2">Page Not Found</h1>
 
             <p className="text-[#889287] mb-8 max-w-xs mx-auto">
-                Oops! The page you're looking for seems to have wandered off the menu.
+                Oops! The page you&apos;re looking for seems to have wandered off the menu.
             </p>
 
             <div className="flex flex-col gap-4 w-full max-w-xs">
