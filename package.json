@@ -16,7 +16,11 @@
     "test-menu-analysis": "node scripts/test-menu-analysis.js"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@google/generative-ai": "^0.24.1",
+    "@mui/icons-material": "^7.3.5",
+    "@mui/material": "^7.3.5",
     "@supabase/supabase-js": "^2.38.0",
     "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
