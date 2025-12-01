@@ -444,13 +444,13 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
               
               {/* Disclaimer */}
               <div style={{
-                marginTop: '16px',
-                padding: '12px 16px',
+                marginTop: '24px',
+                padding: '14px 18px',
                 backgroundColor: '#FEF3C7',
                 border: '1px solid #F59E0B',
                 borderRadius: '12px',
                 fontSize: '12px',
-                lineHeight: '1.5',
+                lineHeight: '1.6',
                 color: '#92400E',
                 textAlign: 'center'
               }}>
@@ -468,7 +468,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
                 >
                   Terms and Conditions
                 </a>
-                , misuse of this platform may result in strict action including account termination.
+                , misuse of this platform may result in strict action including account termination and report to the authorities.
               </div>
             </div>
           )}
