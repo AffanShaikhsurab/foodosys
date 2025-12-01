@@ -5,6 +5,8 @@ export interface Restaurant {
   distance_estimate_m: number
   slug: string
   created_at: string
+  latitude?: number
+  longitude?: number
 }
 
 export interface MenuImage {
