@@ -132,24 +132,20 @@ export default function ImageViewer({ imageUrl, alt, isOpen, onClose }: ImageVie
             onClick={onClose}
         >
             {/* Header Controls */}
-            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
+            <div className="absolute top-0 left-0 right-0 p-6 flex items-center bg-gradient-to-b from-black/90 to-transparent z-10">
                 <button
                     onClick={onClose}
-                    className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-white/30 transition-colors"
+                    className="w-12 h-12 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white border-2 border-white/40 hover:bg-white/40 transition-colors shadow-lg"
                     aria-label="Go back"
+                    style={{ minWidth: '48px', minHeight: '48px' }}
                 >
-                    <i className="ri-arrow-left-line text-xl"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                        <path d="M7.82843 10.9999H20V12.9999H7.82843L13.1924 18.3638L11.7782 19.778L4 11.9999L11.7782 4.22168L13.1924 5.63589L7.82843 10.9999Z"></path>
+                    </svg>
                 </button>
-                <div className="text-white text-sm font-medium">
+                <div className="text-white text-sm font-semibold ml-4">
                     {alt}
                 </div>
-                <button
-                    onClick={onClose}
-                    className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-white/30 transition-colors"
-                    aria-label="Close viewer"
-                >
-                    <i className="ri-close-line text-xl"></i>
-                </button>
             </div>
 
             {/* Zoom Controls */}
