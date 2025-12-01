@@ -441,6 +441,35 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
                   </>
                 )}
               </button>
+              
+              {/* Disclaimer */}
+              <div style={{
+                marginTop: '16px',
+                padding: '12px 16px',
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #F59E0B',
+                borderRadius: '12px',
+                fontSize: '12px',
+                lineHeight: '1.5',
+                color: '#92400E',
+                textAlign: 'center'
+              }}>
+                <i className="ri-alert-line" style={{ marginRight: '4px', fontSize: '14px' }}></i>
+                <strong>Disclaimer:</strong> Uploading erroneous, misleading, or false menu information is strictly prohibited. 
+                As stated in our{' '}
+                <a 
+                  href="/terms" 
+                  target="_blank"
+                  style={{ 
+                    color: '#B45309', 
+                    textDecoration: 'underline',
+                    fontWeight: '600'
+                  }}
+                >
+                  Terms and Conditions
+                </a>
+                , misuse of this platform may result in strict action including account termination.
+              </div>
             </div>
           )}
         </>
