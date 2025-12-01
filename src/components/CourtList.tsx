@@ -97,11 +97,17 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
     if (a.distance === 'Unknown') return 1
     if (b.distance === 'Unknown') return -1
 
-    // Extract numeric value for comparison
-    const aValue = parseFloat(a.distance.replace(/[^\d.]/g, ''))
-    const bValue = parseFloat(b.distance.replace(/[^\d.]/g, ''))
+    // Extract numeric value and unit for proper comparison
+    const aMatch = a.distance.match(/([\d.]+)(km|m)$/)
+    const bMatch = b.distance.match(/([\d.]+)(km|m)$/)
+    
+    if (!aMatch || !bMatch) return 0
+    
+    // Convert to meters for consistent comparison
+    const aMeters = aMatch[2] === 'km' ? parseFloat(aMatch[1]) * 1000 : parseFloat(aMatch[1])
+    const bMeters = bMatch[2] === 'km' ? parseFloat(bMatch[1]) * 1000 : parseFloat(bMatch[1])
 
-    return aValue - bValue
+    return aMeters - bMeters // Ascending order: nearest first
   })
 
   if (isLoading || locationLoading) {

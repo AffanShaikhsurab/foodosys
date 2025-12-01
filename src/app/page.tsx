@@ -5,6 +5,7 @@ import HeroSection from '@/components/HeroSection'
 import FilterSection from '@/components/FilterSection'
 import CourtList from '@/components/CourtList'
 import BottomNav from '@/components/BottomNav'
+import LocationPermissionPrompt from '@/components/LocationPermissionPrompt'
 import { useLocation } from '@/hooks/useLocation'
 
 export default function Home() {
@@ -15,7 +16,7 @@ export default function Home() {
 
   return (
     <>
-
+      <LocationPermissionPrompt />
       <HeroSection
         location={location}
         isLoading={isLoading}

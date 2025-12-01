@@ -156,7 +156,22 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
           <div className="menu-cards">
             {(() => {
               const groupedMenus = groupImagesByMealType(menus)
-              const mealOrder: Array<'Breakfast' | 'Lunch' | 'Dinner'> = ['Breakfast', 'Lunch', 'Dinner']
+              const getMealOrder = (): Array<'Breakfast' | 'Lunch' | 'Dinner'> => {
+                const hour = new Date().getHours()
+                // Breakfast time: 5am - 11am
+                if (hour >= 5 && hour < 11) {
+                  return ['Breakfast', 'Lunch', 'Dinner']
+                } 
+                // Lunch time: 11am - 4pm
+                else if (hour >= 11 && hour < 16) {
+                  return ['Lunch', 'Dinner', 'Breakfast']
+                } 
+                // Dinner time: 4pm - 5am next day
+                else {
+                  return ['Dinner', 'Breakfast', 'Lunch']
+                }
+              }
+              const mealOrder = getMealOrder()
 
               return mealOrder.map(mealType => {
                 const mealMenus = groupedMenus[mealType]
@@ -166,8 +181,8 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                   <div key={mealType}>
                     <div className="meal-type-header">
                       <i className={`ri-${mealType === 'Breakfast' ? 'sun' :
-                          mealType === 'Lunch' ? 'restaurant' :
-                            'moon'
+                        mealType === 'Lunch' ? 'restaurant' :
+                          'moon'
                         }-line`}></i>
                       {mealType}
                     </div>
