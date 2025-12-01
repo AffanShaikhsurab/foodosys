@@ -7,9 +7,12 @@ interface ImageViewerProps {
     alt: string
     isOpen: boolean
     onClose: () => void
+    isAdmin?: boolean
+    imageId?: string
+    onDelete?: (imageId: string) => Promise<void>
 }
 
-export default function ImageViewer({ imageUrl, alt, isOpen, onClose }: ImageViewerProps) {
+export default function ImageViewer({ imageUrl, alt, isOpen, onClose, isAdmin = false, imageId, onDelete }: ImageViewerProps) {
     const [scale, setScale] = useState(1)
     const [position, setPosition] = useState({ x: 0, y: 0 })
     const [isDragging, setIsDragging] = useState(false)
@@ -146,6 +149,19 @@ export default function ImageViewer({ imageUrl, alt, isOpen, onClose }: ImageVie
                 <div className="text-white text-sm font-semibold ml-4">
                     {alt}
                 </div>
+                {isAdmin && imageId && onDelete && (
+                    <button
+                        onClick={async (e) => {
+                            e.stopPropagation()
+                            await onDelete(imageId)
+                        }}
+                        className="ml-auto w-12 h-12 bg-red-500/90 backdrop-blur-md rounded-full flex items-center justify-center text-white border-2 border-red-400/40 hover:bg-red-600/90 transition-colors shadow-lg"
+                        aria-label="Delete image"
+                        style={{ minWidth: '48px', minHeight: '48px' }}
+                    >
+                        <i className="ri-delete-bin-line text-xl"></i>
+                    </button>
+                )}
             </div>
 
             {/* Zoom Controls */}

@@ -66,3 +66,17 @@ export interface ExtractedMenu {
   sections: MenuSection[]
   notes?: string
 }
+
+export interface UserProfile {
+  id: string
+  user_id: string
+  display_name: string
+  avatar_url?: string
+  role: 'trainee' | 'employee' | 'admin'
+  base_location?: string
+  dietary_preference: 'vegetarian' | 'non-veg'
+  karma_points: number
+  level: number
+  created_at: string
+  updated_at: string
+}

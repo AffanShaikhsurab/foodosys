@@ -147,3 +147,36 @@ export async function createProfile(userId: string, displayName: string, avatarU
     throw error
   }
 }
+
+export async function getUserProfile(userId?: string): Promise<any | null> {
+  try {
+    const user = userId ? { id: userId } : await getCurrentUser()
+    if (!user) return null
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user profile:', error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error getting user profile:', error)
+    return null
+  }
+}
+
+export async function isAdmin(): Promise<boolean> {
+  try {
+    const profile = await getUserProfile()
+    return profile?.role === 'admin'
+  } catch (error) {
+    console.error('Error checking admin status:', error)
+    return false
+  }
+}

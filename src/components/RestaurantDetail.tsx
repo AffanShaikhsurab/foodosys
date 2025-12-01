@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp, groupImagesByMealType } from '@/lib/utils'
 import { MenuImage, OCRResult } from '@/lib/types'
 import ImageViewer from '@/components/ImageViewer'
+import { isAdmin } from '@/lib/auth'
 
 interface DisplayMenu extends MenuImage {
   ocr_results?: OCRResult
@@ -32,6 +33,11 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   const [userVotes, setUserVotes] = useState<{ [key: string]: 'helpful' | 'wrong' | null }>({})
   const [viewerOpen, setViewerOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null)
+  const [isAdminUser, setIsAdminUser] = useState(false)
+  const [swipeState, setSwipeState] = useState<{ [key: string]: number }>({})
+  const [isDragging, setIsDragging] = useState<string | null>(null)
+  const touchStartX = useRef<number>(0)
+  const touchStartY = useRef<number>(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,6 +63,10 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         })
         setHelpfulVotes(initialVotes)
         setUserVotes(initialUserVotes)
+
+        // Check if user is admin
+        const adminStatus = await isAdmin()
+        setIsAdminUser(adminStatus)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data')
       } finally {
@@ -87,6 +97,67 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
 
   const toggleOCRView = (menuId: string) => {
     setShowOCR(prev => ({ ...prev, [menuId]: !prev[menuId] }))
+  }
+
+  const handleTouchStart = (e: React.TouchEvent, menuId: string) => {
+    if (!isAdminUser) return
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    setIsDragging(menuId)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent, menuId: string) => {
+    if (!isAdminUser || isDragging !== menuId) return
+    
+    const touchX = e.touches[0].clientX
+    const touchY = e.touches[0].clientY
+    const deltaX = touchX - touchStartX.current
+    const deltaY = touchY - touchStartY.current
+
+    // Only allow horizontal swipe (left)
+    if (Math.abs(deltaY) < Math.abs(deltaX) && deltaX < 0) {
+      setSwipeState(prev => ({ ...prev, [menuId]: Math.max(-100, deltaX) }))
+    }
+  }
+
+  const handleTouchEnd = (menuId: string) => {
+    if (!isAdminUser) return
+    
+    const swipeDistance = swipeState[menuId] || 0
+    
+    if (swipeDistance < -60) {
+      // Swiped far enough, trigger delete
+      handleDeleteImage(menuId)
+    } else {
+      // Reset swipe
+      setSwipeState(prev => ({ ...prev, [menuId]: 0 }))
+    }
+    setIsDragging(null)
+  }
+
+  const handleDeleteImage = async (menuId: string) => {
+    if (!isAdminUser) return
+
+    const confirmed = window.confirm('Are you sure you want to delete this menu image? This action cannot be undone.')
+    if (!confirmed) {
+      setSwipeState(prev => ({ ...prev, [menuId]: 0 }))
+      return
+    }
+
+    try {
+      const reason = window.prompt('Reason for deletion (optional):')
+      await apiClient.deleteMenuImage(menuId, reason || undefined)
+      
+      // Remove from local state
+      setMenus(prev => prev.filter(m => m.id !== menuId))
+      setSwipeState(prev => ({ ...prev, [menuId]: 0 }))
+      
+      alert('Image deleted successfully')
+    } catch (error) {
+      console.error('Failed to delete image:', error)
+      alert('Failed to delete image: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      setSwipeState(prev => ({ ...prev, [menuId]: 0 }))
+    }
   }
 
   if (loading) {
@@ -187,7 +258,46 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                       {mealType}
                     </div>
                     {mealMenus.map((menu) => (
-                      <div key={menu.id} className="menu-card">
+                      <div 
+                        key={menu.id} 
+                        className="menu-card-wrapper"
+                        style={{
+                          position: 'relative',
+                          overflow: 'visible'
+                        }}
+                      >
+                        {isAdminUser && (
+                          <div className="delete-action" style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: '100px',
+                            background: '#EF4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 'var(--radius-lg)',
+                            color: 'white',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            zIndex: 0
+                          }}>
+                            <i className="ri-delete-bin-line" style={{ fontSize: '24px' }}></i>
+                          </div>
+                        )}
+                        <div 
+                          className="menu-card"
+                          style={{
+                            transform: `translateX(${swipeState[menu.id] || 0}px)`,
+                            transition: isDragging === menu.id ? 'none' : 'transform 0.3s ease',
+                            position: 'relative',
+                            zIndex: 1
+                          }}
+                          onTouchStart={(e) => handleTouchStart(e, menu.id)}
+                          onTouchMove={(e) => handleTouchMove(e, menu.id)}
+                          onTouchEnd={() => handleTouchEnd(menu.id)}
+                        >
                         <div className="menu-image-container">
                           <img
                             src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
@@ -206,6 +316,28 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                           <div className="photo-timestamp">
                             <i className="ri-time-line"></i> {formatTimestamp(getEffectiveTimestamp(menu))}
                           </div>
+                          {isAdminUser && (
+                            <div 
+                              className="admin-badge"
+                              style={{
+                                position: 'absolute',
+                                top: '12px',
+                                right: '12px',
+                                background: 'rgba(239, 68, 68, 0.9)',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '12px',
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                backdropFilter: 'blur(4px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <i className="ri-shield-user-line"></i> ADMIN
+                            </div>
+                          )}
                           <div
                             className="view-toggle"
                             onClick={() => toggleOCRView(menu.id)}
@@ -247,6 +379,19 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                           )}
 
                           <div className="feedback-row">
+                            {isAdminUser && (
+                              <button
+                                className="btn-pill"
+                                style={{
+                                  background: '#EF4444',
+                                  color: 'white',
+                                  border: 'none'
+                                }}
+                                onClick={() => handleDeleteImage(menu.id)}
+                              >
+                                <i className="ri-delete-bin-line"></i> Delete Image
+                              </button>
+                            )}
                             <button
                               className={`btn-pill ${userVotes[menu.id] === 'helpful' ? 'active' : ''}`}
                               onClick={() => handleVote(menu.id, 'helpful')}
@@ -261,6 +406,7 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                             </button>
                           </div>
                         </div>
+                      </div>
                       </div>
                     ))}
                   </div>
@@ -286,6 +432,26 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
           imageUrl={selectedImage.url}
           alt={selectedImage.alt}
           isOpen={viewerOpen}
+          isAdmin={isAdminUser}
+          imageId={menus.find(m => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${m.storage_path}` === selectedImage.url)?.id}
+          onDelete={async (imageId) => {
+            const confirmed = window.confirm('Are you sure you want to delete this menu image? This action cannot be undone.')
+            if (!confirmed) return
+
+            try {
+              const reason = window.prompt('Reason for deletion (optional):')
+              await apiClient.deleteMenuImage(imageId, reason || undefined)
+              
+              setMenus(prev => prev.filter(m => m.id !== imageId))
+              setViewerOpen(false)
+              setSelectedImage(null)
+              
+              alert('Image deleted successfully')
+            } catch (error) {
+              console.error('Failed to delete image:', error)
+              alert('Failed to delete image: ' + (error instanceof Error ? error.message : 'Unknown error'))
+            }
+          }}
           onClose={() => {
             setViewerOpen(false)
             setSelectedImage(null)

@@ -167,6 +167,14 @@ class ApiClient {
 
     return response.json()
   }
+
+  // Admin: Delete menu image
+  async deleteMenuImage(imageId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/admin/delete-image/${imageId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason }),
+    })
+  }
 }
 
 export const apiClient = new ApiClient()
