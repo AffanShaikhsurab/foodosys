@@ -535,9 +535,10 @@ body {
 
 .cta-container {
   position: absolute;
-  bottom: 32px;
+  bottom: 100px;
   left: 24px;
   right: 24px;
+  padding-bottom: 20px;
 }
 
 .btn-block {

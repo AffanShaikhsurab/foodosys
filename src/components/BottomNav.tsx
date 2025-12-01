@@ -53,27 +53,7 @@ export default function BottomNav() {
     <div className="bottom-nav-container">
       <div className="bottom-nav">
         <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <HomeRounded sx={{ fontSize: 28 }} />
-            {/* Home Count Badge */}
-            <span style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-4px',
-              backgroundColor: '#FF8A80',
-              color: 'white',
-              fontSize: '10px',
-              fontWeight: 'bold',
-              height: '16px',
-              width: '16px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '2px solid var(--primary-dark)',
-              zIndex: 10
-            }}>3</span>
-          </div>
+          <HomeRounded sx={{ fontSize: 28 }} />
           <span className="nav-label">Home</span>
         </Link>
 
