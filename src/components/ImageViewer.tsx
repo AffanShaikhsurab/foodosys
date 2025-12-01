@@ -133,15 +133,22 @@ export default function ImageViewer({ imageUrl, alt, isOpen, onClose }: ImageVie
         >
             {/* Header Controls */}
             <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
+                <button
+                    onClick={onClose}
+                    className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-white/30 transition-colors"
+                    aria-label="Go back"
+                >
+                    <i className="ri-arrow-left-line text-xl"></i>
+                </button>
                 <div className="text-white text-sm font-medium">
                     {alt}
                 </div>
                 <button
                     onClick={onClose}
-                    className="text-white hover:text-gray-300 transition-colors p-2"
+                    className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-white/30 transition-colors"
                     aria-label="Close viewer"
                 >
-                    <i className="ri-close-line text-3xl"></i>
+                    <i className="ri-close-line text-xl"></i>
                 </button>
             </div>
 
