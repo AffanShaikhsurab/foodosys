@@ -20,7 +20,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
   useEffect(() => {
     logCamera('CameraComponent mounted', { operation: 'component_mount' })
     logger.componentMount('CameraComponent')
-    
+
     return () => {
       logCamera('CameraComponent unmounted', { operation: 'component_unmount' })
       logger.componentUnmount('CameraComponent')
@@ -32,27 +32,27 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
       logCamera('Capture attempted but camera ref is null', { operation: 'capture_attempt', error: 'Camera ref is null' })
       return
     }
-    
+
     const startTime = Date.now()
     logCamera('Photo capture initiated', { operation: 'capture_start' })
-    
+
     try {
       setIsCapturing(true)
       const photo = await camera.current.takePhoto()
-      
+
       logCamera('Photo captured from camera', {
         operation: 'capture_success',
         photoType: typeof photo,
         hasPhoto: !!photo
       })
-      
+
       // Capture the current timestamp when photo is taken
       const timestamp = new Date().toISOString()
-      
+
       // Convert the photo to base64 if it's not already
       if (photo) {
         logCamera('Starting image processing', { operation: 'image_processing_start' })
-        
+
         // Create a canvas to rotate the image if needed
         const img = new Image()
         img.onload = () => {
@@ -60,36 +60,36 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
             operation: 'image_loaded',
             dimensions: { width: img.width, height: img.height }
           })
-          
+
           const canvas = document.createElement('canvas')
           const ctx = canvas.getContext('2d')
-          
+
           if (ctx) {
             // Set canvas dimensions to match the image
             canvas.width = img.width
             canvas.height = img.height
-            
+
             // For selfie camera effect, we need to flip the image horizontally
             ctx.translate(canvas.width, 0)
             ctx.scale(-1, 1)
-            
+
             // Draw the image
             ctx.drawImage(img, 0, 0)
-            
+
             // Convert to base64
             const base64 = canvas.toDataURL('image/jpeg', 0.9)
             const processingTime = Date.now() - startTime
-            
+
             logCamera('Image processed and converted to base64', {
               operation: 'image_processed',
               timestamp,
               processingTime,
               base64Length: base64.length
             })
-            
+
             setCapturedImage(base64)
             onPhotoCapture(base64, timestamp)
-            
+
             logCamera('Photo capture completed successfully', {
               operation: 'capture_completed',
               totalProcessingTime: processingTime
@@ -99,12 +99,12 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
             setError('Failed to process image. Please try again.')
           }
         }
-        
+
         img.onerror = () => {
           logCamera('Failed to load image for processing', { operation: 'image_load_error' })
           setError('Failed to process captured image. Please try again.')
         }
-        
+
         img.src = photo
       } else {
         logCamera('Camera returned empty photo', { operation: 'capture_empty' })
@@ -117,7 +117,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
         processingTime,
         error: err instanceof Error ? err.message : 'Unknown error'
       })
-      
+
       setError('Failed to capture photo. Please try again.')
       console.error('Camera capture error:', err)
     } finally {
@@ -137,7 +137,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
       errorMessage: error.message,
       errorName: error.name
     })
-    
+
     setError('Camera access denied. Please enable camera permissions.')
     console.error('Camera error:', error)
     setIsCameraActive(false)
@@ -163,7 +163,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
             <p style={{ color: 'var(--text-main)', textAlign: 'center', marginBottom: '16px' }}>
               {error}
             </p>
-            <button 
+            <button
               onClick={onClose}
               className="btn-outline"
               style={{ padding: '12px 24px' }}
@@ -175,12 +175,12 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
       ) : capturedImage ? (
         <div className="camera-preview" style={{ backgroundImage: `url(${capturedImage})`, opacity: 1, filter: 'none' }}>
           <div className="camera-controls">
-            <button 
+            <button
               onClick={handleRetake}
               className="btn-outline"
-              style={{ 
-                position: 'absolute', 
-                top: '16px', 
+              style={{
+                position: 'absolute',
+                top: '16px',
                 left: '16px',
                 padding: '8px 16px',
                 background: 'rgba(255, 255, 255, 0.9)',
@@ -193,14 +193,14 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
             >
               <i className="ri-refresh-line"></i> Retake
             </button>
-            
+
             {onClose && (
-              <button 
+              <button
                 onClick={onClose}
                 className="btn-outline"
-                style={{ 
-                  position: 'absolute', 
-                  top: '16px', 
+                style={{
+                  position: 'absolute',
+                  top: '16px',
                   right: '16px',
                   padding: '8px 16px',
                   background: 'rgba(255, 255, 255, 0.9)',
@@ -221,6 +221,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
           {isCameraActive ? (
             <Camera
               ref={camera}
+              facingMode='environment'
               errorMessages={{
                 noCameraAccessible: 'Camera access denied. Please enable camera permissions.',
                 permissionDenied: 'Camera permission denied. Please enable camera permissions in your browser settings.',
@@ -236,29 +237,29 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
               </div>
             </div>
           )}
-          
+
           <div className="camera-ui">
             <div
               className={`camera-btn ${isCapturing ? 'disabled' : ''}`}
               onClick={isCapturing ? undefined : handleCapture}
               style={{ opacity: isCapturing ? 0.6 : 1 }}
             >
-              <i className={isCapturing ? "ri-loader-4-line" : "ri-camera-fill"} style={{ 
-                animation: isCapturing ? 'spin 1s linear infinite' : 'none' 
+              <i className={isCapturing ? "ri-loader-4-line" : "ri-camera-fill"} style={{
+                animation: isCapturing ? 'spin 1s linear infinite' : 'none'
               }}></i>
             </div>
             <div className="camera-text">
               {isCapturing ? 'Capturing...' : 'Tap to capture menu'}
             </div>
           </div>
-          
+
           {onClose && (
-            <button 
+            <button
               onClick={onClose}
               className="btn-outline"
-              style={{ 
-                position: 'absolute', 
-                top: '16px', 
+              style={{
+                position: 'absolute',
+                top: '16px',
                 right: '16px',
                 padding: '8px 16px',
                 background: 'rgba(255, 255, 255, 0.9)',
@@ -275,7 +276,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
           )}
         </>
       )}
-      
+
       <style jsx>{`
         @keyframes spin {
           from { transform: rotate(0deg); }

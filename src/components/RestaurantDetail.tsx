@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import { apiClient } from '@/lib/api'
-import { formatTimestamp, getEffectiveTimestamp, groupImagesByDate } from '@/lib/utils'
+import { formatTimestamp, getEffectiveTimestamp, groupImagesByMealType } from '@/lib/utils'
 import { MenuImage, OCRResult } from '@/lib/types'
 import ImageViewer from '@/components/ImageViewer'
 
@@ -122,7 +122,9 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         onClick={() => router.back()}
         className="fixed top-6 left-6 z-10 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10"
       >
-        <i className="ri-arrow-left-line"></i>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+          <path d="M7.82843 10.9999H20V12.9999H7.82843L13.1924 18.3638L11.7782 19.778L4 11.9999L11.7782 4.22168L13.1924 5.63589L7.82843 10.9999Z"></path>
+        </svg>
       </button>
 
       {/* Hero Section */}
@@ -152,90 +154,104 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         {/* Menu Cards */}
         {menus.length > 0 ? (
           <div className="menu-cards">
-            {menus.map((menu) => (
-              <div key={menu.id} className="menu-card">
-                <div className="menu-image-container">
-                  <img
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
-                    alt="Menu Photo"
-                    className="cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => {
-                      const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
-                      setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
-                      setViewerOpen(true)
-                    }}
-                    onError={(e) => {
-                      // Fallback to placeholder if image fails to load
-                      e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
-                    }}
-                  />
-                  <div className="photo-timestamp">
-                    <i className="ri-time-line"></i> {formatTimestamp(getEffectiveTimestamp(menu))}
-                  </div>
-                  <div
-                    className="view-toggle"
-                    onClick={() => toggleOCRView(menu.id)}
-                  >
-                    <i className={`ri-${showOCR[menu.id] ? 'image' : 'text'}`}></i>
-                    View {showOCR[menu.id] ? 'Image' : 'Text'}
-                  </div>
-                </div>
+            {(() => {
+              const groupedMenus = groupImagesByMealType(menus)
+              const mealOrder: Array<'Breakfast' | 'Lunch' | 'Dinner'> = ['Breakfast', 'Lunch', 'Dinner']
 
-                <div className="ocr-content">
-                  <div className="ocr-header">
-                    <span className="ocr-title">Menu Photo</span>
-                    <button style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                      <i className="ri-pencil-line"></i> Edit
-                    </button>
-                  </div>
+              return mealOrder.map(mealType => {
+                const mealMenus = groupedMenus[mealType]
+                if (mealMenus.length === 0) return null
 
-                  {showOCR[menu.id] && menu.ocr_results ? (
-                    <div className="ocr-text-block">
-                      {(() => {
-                        const text = menu.ocr_results?.text || ''
-                        return text.split('\n').map((line, index) => (
-                          <div key={index}>{line}</div>
-                        ))
-                      })()}
+                return (
+                  <div key={mealType}>
+                    <div className="meal-type-header">
+                      <i className={`ri-${mealType === 'Breakfast' ? 'sun' :
+                          mealType === 'Lunch' ? 'restaurant' :
+                            'moon'
+                        }-line`}></i>
+                      {mealType}
                     </div>
-                  ) : (
-                    <div className="ocr-text-block">
-                      {menu.ocr_results ? (
-                        (() => {
-                          const text = menu.ocr_results?.text || ''
-                          return text.split('\n').map((line, index) => (
-                            <div key={index}>{line}</div>
-                          ))
-                        })()
-                      ) : (
-                        <>
-                          • Masala Dosa - ₹45<br />
-                          • Idli Vada Set - ₹30<br />
-                          • Veg Pulao - ₹40<br />
-                          • Curd Rice - ₹25<br />
-                          • Filter Coffee - ₹10
-                        </>
-                      )}
-                    </div>
-                  )}
+                    {mealMenus.map((menu) => (
+                      <div key={menu.id} className="menu-card">
+                        <div className="menu-image-container">
+                          <img
+                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
+                            alt="Menu Photo"
+                            className="cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => {
+                              const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
+                              setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
+                              setViewerOpen(true)
+                            }}
+                            onError={(e) => {
+                              // Fallback to placeholder if image fails to load
+                              e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
+                            }}
+                          />
+                          <div className="photo-timestamp">
+                            <i className="ri-time-line"></i> {formatTimestamp(getEffectiveTimestamp(menu))}
+                          </div>
+                          <div
+                            className="view-toggle"
+                            onClick={() => toggleOCRView(menu.id)}
+                          >
+                            <i className={`ri-${showOCR[menu.id] ? 'image' : 'text'}`}></i>
+                            View {showOCR[menu.id] ? 'Image' : 'Text'}
+                          </div>
+                        </div>
 
-                  <div className="feedback-row">
-                    <button
-                      className={`btn-pill ${userVotes[menu.id] === 'helpful' ? 'active' : ''}`}
-                      onClick={() => handleVote(menu.id, 'helpful')}
-                    >
-                      <i className="ri-thumb-up-line"></i> Helpful ({helpfulVotes[menu.id]})
-                    </button>
-                    <button
-                      className={`btn-pill report ${userVotes[menu.id] === 'wrong' ? 'active' : ''}`}
-                      onClick={() => handleVote(menu.id, 'wrong')}
-                    >
-                      <i className="ri-flag-line"></i> Wrong
-                    </button>
+                        <div className="ocr-content">
+                          {showOCR[menu.id] && menu.ocr_results ? (
+                            <div className="ocr-text-block">
+                              {(() => {
+                                const text = menu.ocr_results?.text || ''
+                                return text.split('\n').map((line, index) => (
+                                  <div key={index}>{line}</div>
+                                ))
+                              })()}
+                            </div>
+                          ) : (
+                            <div className="ocr-text-block">
+                              {menu.ocr_results ? (
+                                (() => {
+                                  const text = menu.ocr_results?.text || ''
+                                  return text.split('\n').map((line, index) => (
+                                    <div key={index}>{line}</div>
+                                  ))
+                                })()
+                              ) : (
+                                <>
+                                  • Masala Dosa - ₹45<br />
+                                  • Idli Vada Set - ₹30<br />
+                                  • Veg Pulao - ₹40<br />
+                                  • Curd Rice - ₹25<br />
+                                  • Filter Coffee - ₹10
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="feedback-row">
+                            <button
+                              className={`btn-pill ${userVotes[menu.id] === 'helpful' ? 'active' : ''}`}
+                              onClick={() => handleVote(menu.id, 'helpful')}
+                            >
+                              <i className="ri-thumb-up-line"></i> Helpful ({helpfulVotes[menu.id]})
+                            </button>
+                            <button
+                              className={`btn-pill report ${userVotes[menu.id] === 'wrong' ? 'active' : ''}`}
+                              onClick={() => handleVote(menu.id, 'wrong')}
+                            >
+                              <i className="ri-flag-line"></i> Wrong
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              </div>
-            ))}
+                )
+              })
+            })()}
           </div>
         ) : (
           <div className="menu-card" style={{ opacity: 0.6 }}>
@@ -339,7 +355,29 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         .menu-cards {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 16px;
+        }
+
+        .meal-type-header {
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--primary-dark);
+          margin: 24px 0 16px 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .meal-type-header:first-child {
+          margin-top: 0;
+        }
+
+        .meal-type-header i {
+          color: var(--accent-lime);
+          background: var(--primary-dark);
+          padding: 6px;
+          border-radius: 8px;
+          font-size: 14px;
         }
 
         .menu-card {
@@ -347,6 +385,7 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
           border-radius: var(--radius-lg);
           padding: 8px;
           box-shadow: var(--shadow-sm);
+          margin-bottom: 8px;
         }
 
         .menu-image-container {
@@ -397,19 +436,6 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
 
         .ocr-content {
           padding: 16px;
-        }
-
-        .ocr-header {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 12px;
-          padding-bottom: 12px;
-          border-bottom: 1px dashed #eee;
-        }
-
-        .ocr-title { 
-          font-weight: 700; 
-          color: var(--primary-dark); 
         }
         
         .ocr-text-block {
