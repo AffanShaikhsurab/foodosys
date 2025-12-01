@@ -26,6 +26,7 @@
     "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
     "formidable": "^3.5.1",
+    "lottie-react": "^2.4.1",
     "next": "14.0.0",
     "ocr-space-api-wrapper": "^2.4.2",
     "react": "^18",

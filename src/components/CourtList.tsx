@@ -25,6 +25,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [menuAvailability, setMenuAvailability] = useState<Record<string, boolean>>({})
+  const [menuStats, setMenuStats] = useState({ withMenus: 0, total: 0 })
   const { calculateDistance, formatDistance } = useDistance()
 
   console.log('CourtList - userLocation prop:', userLocation)
@@ -42,7 +43,15 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
           // Check menu availability for all restaurants
           const restaurantIds = data.restaurants.map((r: Restaurant) => r.id)
           const availability = await getMenuAvailabilityForRestaurants(restaurantIds)
+          console.log('Menu availability data:', availability)
+          
+          // Count restaurants with and without menus
+          const withMenus = Object.values(availability).filter(Boolean).length
+          const withoutMenus = Object.values(availability).filter(v => !v).length
+          console.log(`Restaurants with menus: ${withMenus}, without menus: ${withoutMenus}`)
+          
           setMenuAvailability(availability)
+          setMenuStats({ withMenus, total: data.restaurants.length })
         }
       } catch (error) {
         console.error('Error fetching restaurants:', error)
@@ -92,8 +101,18 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
     }
   })
 
-  // Sort by distance (unknown distances go to the end)
+  // Sort by menu availability first, then by distance
   const sortedRestaurants = [...restaurantsWithDistance].sort((a, b) => {
+    // Check if restaurants have menus
+    const aHasMenu = menuAvailability[a.id] ? 1 : 0
+    const bHasMenu = menuAvailability[b.id] ? 1 : 0
+    
+    // Sort by menu availability first (restaurants with menus come first)
+    if (aHasMenu !== bHasMenu) {
+      return bHasMenu - aHasMenu // Descending: 1 (has menu) before 0 (no menu)
+    }
+    
+    // If both have same menu status, sort by distance
     if (a.distance === 'Unknown') return 1
     if (b.distance === 'Unknown') return -1
 
@@ -150,6 +169,22 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
 
   return (
     <div className="court-list">
+      {menuStats.total > 0 && (
+        <div style={{
+          padding: '12px 20px',
+          marginBottom: '16px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: '12px',
+          color: 'white',
+          textAlign: 'center',
+          fontSize: '14px',
+          fontWeight: '600',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          <span style={{ fontSize: '18px', marginRight: '8px' }}>🍽️</span>
+          {menuStats.withMenus} of {menuStats.total} restaurants have live menus
+        </div>
+      )}
       {sortedRestaurants.map((restaurant) => (
         <CourtCard
           key={restaurant.id}
