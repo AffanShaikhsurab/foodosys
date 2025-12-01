@@ -434,7 +434,7 @@ body {
 
 .form-group {
   padding: 0 24px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .label {
@@ -465,8 +465,8 @@ body {
 }
 
 .camera-zone {
-  margin: 0 24px;
-  height: 320px;
+  margin: 0 24px 20px;
+  height: 280px;
   background: var(--primary-dark);
   border-radius: var(--radius-xl);
   position: relative;
@@ -534,11 +534,8 @@ body {
 }
 
 .cta-container {
-  position: absolute;
-  bottom: 100px;
-  left: 24px;
-  right: 24px;
-  padding-bottom: 20px;
+  margin: 20px 24px;
+  margin-bottom: 140px;
 }
 
 .btn-block {
@@ -589,7 +586,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 20px 24px;
+  margin: 16px 24px;
   position: relative;
 }
 
@@ -615,7 +612,8 @@ body {
 }
 
 .tip-container {
-  padding: 24px;
+  padding: 16px 24px;
+  margin-bottom: 20px;
 }
 
 .tip-content {

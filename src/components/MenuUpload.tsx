@@ -365,14 +365,26 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
           {/* Camera Zone */}
           <div className="camera-zone">
             {preview ? (
-              <div className="camera-preview" style={{ backgroundImage: `url(${preview})`, opacity: 1, filter: 'none' }}></div>
+              <img 
+                src={preview} 
+                alt="Menu preview" 
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: 'var(--radius-xl)',
+                  zIndex: 1
+                }}
+              />
             ) : (
               <div className="camera-preview"></div>
             )}
             
-            {!isUploading && !isInitializing && <div className="scan-line"></div>}
+            {!isUploading && !isInitializing && !preview && <div className="scan-line"></div>}
             
-            <div className="camera-ui">
+            <div className="camera-ui" style={{ position: 'relative', zIndex: 10 }}>
               <div className={`camera-btn ${isUploading || !isAuthenticated ? 'disabled' : ''}`}
                    onClick={isUploading ? undefined : (preview ? handleRetake : handleScanClick)}>
                 <i className={isInitializing ? "ri-loader-4-line" : isUploading ? "ri-loader-4-line" : (!isAuthenticated ? "ri-lock-line" : (preview ? "ri-refresh-line" : "ri-camera-fill"))}

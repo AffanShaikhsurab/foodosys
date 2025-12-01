@@ -131,14 +131,6 @@ export default function UploadPage() {
 
   return (
     <div className="app-container" style={{ position: 'relative' }}>
-      {/* Back Button */}
-      <button
-        onClick={() => router.back()}
-        className="fixed top-6 left-6 z-10 w-10 h-10 bg-[#E8E8E8] rounded-full flex items-center justify-center shadow-sm"
-      >
-        <i className="ri-arrow-left-line text-xl text-[#2C3E2E]"></i>
-      </button>
-
       <div style={{ paddingTop: '5rem' }} className="upload-header">
         <div className="upload-title">Update Menu</div>
         <div className="upload-subtitle">You&apos;re helping ~30 students avoid a long walk. Nice! 🌱</div>
