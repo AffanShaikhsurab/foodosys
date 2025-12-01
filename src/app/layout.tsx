@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'Mysore Mess Menus',
-  description: 'View daily menus for Infosys Mysore campus food courts',
+  description: 'View daily menus for campus food courts',
 }
 
 export default function RootLayout({
