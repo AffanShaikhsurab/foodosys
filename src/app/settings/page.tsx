@@ -12,6 +12,8 @@ interface UserProfile {
   display_name: string
   avatar_url?: string
   role: string
+  base_location?: string
+  dietary_preference?: string
   karma_points: number
   level: number
 }
@@ -252,7 +254,13 @@ export default function ProfilePage() {
           </div>
         </div>
         <h2 className="user-name">{userProfile.display_name}</h2>
-        <div className="user-handle">{userProfile.role} • Batch 2025</div>
+        <div className="user-handle">{userProfile.role} • {userProfile.base_location || 'Campus'}</div>
+        {userProfile.dietary_preference && (
+          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14px', color: '#666' }}>
+            <i className={userProfile.dietary_preference === 'vegetarian' ? 'ri-leaf-line' : 'ri-restaurant-line'}></i>
+            <span style={{ textTransform: 'capitalize' }}>{userProfile.dietary_preference}</span>
+          </div>
+        )}
       </div>
 
       {/* Points / Karma Card */}

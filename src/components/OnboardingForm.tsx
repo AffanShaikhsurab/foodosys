@@ -1,22 +1,21 @@
 'use client';
 
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
+import { useClerkSupabaseClient } from '@/lib/clerk-supabase';
 
 // TypeScript interfaces for the form data
 interface OnboardingFormData {
-  email: string;
-  password: string;
   displayName: string;
   role: 'trainee' | 'employee';
   baseLocation: string;
   dietaryPreference: 'vegetarian' | 'non-veg';
-  avatar: string | null;
+  avatar: File | null;
 }
 
 // Validation errors interface
 interface FormErrors {
-  email?: string;
-  password?: string;
   displayName?: string;
   role?: string;
   baseLocation?: string;
@@ -25,16 +24,22 @@ interface FormErrors {
 }
 
 const OnboardingForm: React.FC = () => {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const supabase = useClerkSupabaseClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState<OnboardingFormData>({
-    email: '',
-    password: '',
     displayName: '',
     role: 'trainee',
     baseLocation: '',
     dietaryPreference: 'vegetarian',
     avatar: null,
   });
+
+  // Avatar preview state
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   // Validation errors state
   const [errors, setErrors] = useState<FormErrors>({});
@@ -50,23 +55,30 @@ const OnboardingForm: React.FC = () => {
     'SDB Blocks',
   ];
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, user, router]);
+
+  // Pre-fill name from Clerk user data
+  useEffect(() => {
+    if (user) {
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      if (fullName) {
+        setFormData(prev => ({ ...prev, displayName: fullName }));
+      }
+      // Set avatar preview from Clerk if available
+      if (user.imageUrl) {
+        setAvatarPreview(user.imageUrl);
+      }
+    }
+  }, [user]);
+
   // Validate form fields
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long';
-    }
 
     // Display name validation
     if (!formData.displayName) {
@@ -165,60 +177,122 @@ const OnboardingForm: React.FC = () => {
         return;
       }
 
-      // Convert to base64 for preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({
+      // Store the file and create preview
+      setFormData(prev => ({
+        ...prev,
+        avatar: file,
+      }));
+
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
+
+      if (errors.avatar) {
+        setErrors(prev => ({
           ...prev,
-          avatar: reader.result as string,
+          avatar: undefined,
         }));
-        if (errors.avatar) {
-          setErrors(prev => ({
-            ...prev,
-            avatar: undefined,
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      // Form is valid, you can now handle the submission
-      console.log('Form submitted:', formData);
-      // In a real app, you would handle authentication logic here
-      alert('Form submitted successfully! (Check console for data)');
+    if (!validateForm() || !user) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let avatarUrl = user.imageUrl || null;
+
+      // Upload avatar to Supabase storage if user selected a new one
+      if (formData.avatar) {
+        const fileExt = formData.avatar.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('user-avatars')
+          .upload(filePath, formData.avatar, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('Error uploading avatar:', uploadError);
+        } else {
+          // Get public URL
+          const { data } = supabase.storage
+            .from('user-avatars')
+            .getPublicUrl(filePath);
+          
+          avatarUrl = data.publicUrl;
+        }
+      }
+
+      // Insert or update user profile
+      const { error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          display_name: formData.displayName,
+          role: formData.role,
+          base_location: formData.baseLocation,
+          dietary_preference: formData.dietaryPreference,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+
+      if (upsertError) {
+        console.error('Error saving profile:', upsertError);
+        alert('Failed to save profile. Please try again.');
+        return;
+      }
+
+      // Success! Redirect to homepage
+      router.push('/');
+    } catch (error) {
+      console.error('Submission error:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-bg-body flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-text-muted">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // User is not authenticated, will redirect via useEffect
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-bg-body flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        {/* Progress Header */}
-        <div className="p-6 pb-4">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-text-muted uppercase tracking-wide">
-              Step 2 of 3
-            </span>
-            <div className="flex-1 h-1.5 bg-primary-dark/10 rounded-full overflow-hidden">
-              <div className="w-3/5 h-full bg-primary-dark rounded-full"></div>
-            </div>
-          </div>
-        </div>
-
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="px-6 pb-24">
+        <form onSubmit={handleSubmit} className="px-6 py-8 pb-24">
           {/* Title Section */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-primary-dark leading-tight mb-2">
-              Set up your<br />Campus Profile
+              Complete Your Profile
             </h1>
             <p className="text-sm text-text-muted leading-relaxed">
-              This helps us show you the nearest food courts and relevant menus.
+              Tell us a bit about yourself to personalize your experience.
             </p>
           </div>
 
@@ -229,9 +303,9 @@ const OnboardingForm: React.FC = () => {
               onClick={handleAvatarClick}
             >
               <div className="w-24 h-24 bg-bg-subtle rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-3xl text-text-muted hover:border-accent-lime hover:bg-white transition-all duration-200">
-                {formData.avatar ? (
+                {avatarPreview ? (
                   <img
-                    src={formData.avatar}
+                    src={avatarPreview}
                     alt="Avatar"
                     className="w-full h-full rounded-full object-cover"
                   />
@@ -255,50 +329,10 @@ const OnboardingForm: React.FC = () => {
             )}
           </div>
 
-          {/* Email Input */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-primary-dark uppercase tracking-wide mb-2.5">
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="you@example.com"
-              className={`w-full px-4.5 py-4.5 bg-white rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark ${
-                errors.email ? 'border-red-500 focus:ring-red-500/50' : ''
-              }`}
-            />
-            {errors.email && (
-              <p className="text-red-500 text-xs mt-1.5">{errors.email}</p>
-            )}
-          </div>
-
-          {/* Password Input */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-primary-dark uppercase tracking-wide mb-2.5">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder="Create a secure password"
-              className={`w-full px-4.5 py-4.5 bg-white rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark ${
-                errors.password ? 'border-red-500 focus:ring-red-500/50' : ''
-              }`}
-            />
-            {errors.password && (
-              <p className="text-red-500 text-xs mt-1.5">{errors.password}</p>
-            )}
-          </div>
-
           {/* Display Name Input */}
           <div className="mb-6">
             <label className="block text-xs font-bold text-primary-dark uppercase tracking-wide mb-2.5">
-              Display Name
+              What's Your Name?
             </label>
             <input
               type="text"
@@ -428,10 +462,16 @@ const OnboardingForm: React.FC = () => {
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-body via-bg-body to-transparent">
           <button
             type="submit"
-            onClick={handleSubmit}
-            className="w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95"
+            disabled={isSubmitting}
+            className={`w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95 ${
+              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
-            All Set, Let&apos;s Eat! <i className="ri-arrow-right-line"></i>
+            {isSubmitting ? (
+              <>Saving...</>
+            ) : (
+              <>Let&apos;s Eat! <i className="ri-arrow-right-line"></i></>
+            )}
           </button>
         </div>
       </div>
