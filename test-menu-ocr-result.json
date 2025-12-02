@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-12-02T13:05:53.070Z",
+  "duration_seconds": 33.31,
+  "image_path": "C:\\Users\\affan\\Downloads\\Menu_of_Fatto_a_Mano_Pizzeria,_North_Laine_(desserts).jpg",
+  "endpoint": "https://magadumpramod420--deepseek-ocr-ocr-endpoint.modal.run/",
+  "mode": "gundam",
+  "result": {
+    "text": "No OCR result generated",
+    "mode": "gundam",
+    "config": {
+      "base_size": 1024,
+      "image_size": 640,
+      "crop_mode": true
+    }
+  }
+}

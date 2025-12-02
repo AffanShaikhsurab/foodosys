@@ -1,0 +1,20 @@
+{
+  "ParsedResults": [
+    {
+      "TextOverlay": {
+        "Lines": [],
+        "HasOverlay": false,
+        "Message": "Text overlay is not provided as it is not requested"
+      },
+      "TextOrientation": "0",
+      "FileParseExitCode": 1,
+      "ParsedText": "FATTO A MANO\nPIZZERIA\nFATTO TIRAMISU - 7\nCoffee liqueur soaked sponge, mascarpone, chocolate\nSCUGNIZIELLI NUTELLA & GELATO - 7.5\nFried mini pizza doughnuts, Nutella, vanilla gelato\nAFFOGATO - 6\nVanilla gelato, espresso\nAFFOGATO LIMONCELLO (og) - 7.5\nLemon sorbet, limoncello\nGELATO SANDWICH\nLEMON MERINGUE - 7\nVanilla biscuit filled with vanilla gelato,\nlemon curd & meringue\nCHOCOLATE SALTED CARAMEL - 7\nChocolate dipped biscuit filled with\nsalted caramel gelato\nCHOCOLATE ORANGE (og) - 7\nChocolate biscuit filled with chocolate orange gelato\nDIGESTIVO\nLIMONCELLO 35ml - 4\nCREMA DI PISTACHIO 35ml - 4\nAMARO DEL CAPO 35ml - 4\nMELONCELLO 35ml - 4\nCOFFEE\nESPRESSO - 2.5\nMACCHIATO - 2.5",
+      "ErrorMessage": "",
+      "ErrorDetails": ""
+    }
+  ],
+  "OCRExitCode": 1,
+  "IsErroredOnProcessing": false,
+  "ProcessingTimeInMilliseconds": "953",
+  "SearchablePDFURL": "Searchable PDF not generated as it was not requested."
+}

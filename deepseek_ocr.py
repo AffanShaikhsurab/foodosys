@@ -173,25 +173,49 @@ def process_ocr(
     print(f"Processing OCR with mode={mode}, config={config}...")
     
     # Run OCR
-    result = model.infer(
-        tokenizer,
-        prompt=prompt,
-        image_file=temp_image_path,
-        output_path="/tmp",
-        base_size=config["base_size"],
-        image_size=config["image_size"],
-        crop_mode=config["crop_mode"],
-        save_results=save_results,
-        test_compress=test_compress,
-    )
-    
-    print("OCR processing complete!")
-    
-    return {
-        "text": result,
-        "mode": mode,
-        "config": config,
-    }
+    try:
+        result = model.infer(
+            tokenizer,
+            prompt=prompt,
+            image_file=temp_image_path,
+            output_path="/tmp",
+            base_size=config["base_size"],
+            image_size=config["image_size"],
+            crop_mode=config["crop_mode"],
+            save_results=save_results,
+            test_compress=test_compress,
+        )
+        
+        print(f"OCR processing complete! Result type: {type(result)}")
+        print(f"Result preview: {str(result)[:200] if result else 'None'}")
+        
+        # Handle different result types
+        if result is None:
+            result_text = "No OCR result generated"
+        elif isinstance(result, dict):
+            result_text = result.get('text', str(result))
+        elif isinstance(result, str):
+            result_text = result
+        else:
+            result_text = str(result)
+        
+        return {
+            "text": result_text,
+            "mode": mode,
+            "config": config,
+            "success": True
+        }
+    except Exception as e:
+        print(f"Error during OCR processing: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "text": f"OCR processing failed: {str(e)}",
+            "mode": mode,
+            "config": config,
+            "success": False,
+            "error": str(e)
+        }
 
 
 @app.function(image=image)

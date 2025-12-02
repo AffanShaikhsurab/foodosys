@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, supabaseAdmin } from '@/lib/supabase'
 import { ocrService } from '@/lib/ocr'
 import { menuAnalyzer } from '@/lib/menu-analyzer'
-import { modalOCRService } from '@/lib/modal-ocr'
+import { ocrSpaceV2Service } from '@/lib/ocr-space-v2'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
 
@@ -401,7 +401,7 @@ export async function POST(request: NextRequest) {
     let menuValidationResult = null
     
     try {
-      console.log(`[Upload API] Calling modalOCRService.processAndValidateMenu:`, {
+      console.log(`[Upload API] Calling ocrSpaceV2Service.processAndValidateMenu:`, {
         base64Length: base64Image.length,
         mimeType: file.type,
         imageId: menuImageId,
@@ -409,8 +409,8 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      // Process image with Modal OCR and validate if it's a menu
-      console.log(`[Upload API] Step 1: Starting Modal OCR and menu validation:`, {
+      // Process image with OCR.space API v2 and validate if it's a menu
+      console.log(`[Upload API] Step 1: Starting OCR.space API v2 and menu validation:`, {
         imageId: menuImageId,
         base64Length: base64Image.length,
         mimeType: file.type,
@@ -418,14 +418,13 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      const { ocrResult: modalOcrResult, validationResult } = await modalOCRService.processAndValidateMenu(base64Image)
+      const { ocrResult: v2OcrResult, validationResult } = await ocrSpaceV2Service.processAndValidateMenu(base64Image)
       
-      console.log(`[Upload API] Step 1 completed: Modal OCR Service response received:`, {
+      console.log(`[Upload API] Step 1 completed: OCR.space API v2 Service response received:`, {
         imageId: menuImageId,
-        hasResponse: !!modalOcrResult,
-        textLength: modalOcrResult?.text?.length || 0,
-        textPreview: modalOcrResult?.text?.substring(0, 100),
-        mode: modalOcrResult?.mode,
+        hasResponse: !!v2OcrResult,
+        textLength: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.length || 0,
+        textPreview: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.substring(0, 100),
         requestId,
         timestamp: new Date().toISOString()
       })
@@ -486,17 +485,8 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      // Convert Modal OCR result to the expected format for compatibility
-      ocrResult = {
-        IsErroredOnProcessing: false,
-        ParsedResults: [{
-          ParsedText: modalOcrResult.text,
-          TextOverlay: {
-            Lines: [] // Modal OCR doesn't provide this level of detail
-          }
-        }],
-        ProcessingTimeInMilliseconds: 0 // Modal OCR doesn't provide this
-      }
+      // Use OCR.space API v2 result directly (already in the expected format)
+      ocrResult = v2OcrResult
       
       ocrProcessingSucceeded = true
       menuValidationResult = validationResult
@@ -504,8 +494,8 @@ export async function POST(request: NextRequest) {
       console.log(`[Upload API] OCR and menu validation completed successfully:`, {
         imageId: menuImageId,
         success: true,
-        textLength: modalOcrResult.text?.length || 0,
-        textPreview: modalOcrResult.text?.substring(0, 100),
+        textLength: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.length || 0,
+        textPreview: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.substring(0, 100),
         isMenu: validationResult.isMenu,
         confidence: validationResult.confidence,
         reason: validationResult.reason,
