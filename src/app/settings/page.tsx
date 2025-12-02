@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useClerkSupabaseClient } from '@/lib/clerk-supabase'
-import { createProfile } from '@/lib/auth-client'
 import { useClerk, useUser } from '@clerk/nextjs'
 import BottomNav from '@/components/BottomNav'
 import { useRouter } from 'next/navigation'
@@ -12,6 +10,8 @@ interface UserProfile {
   display_name: string
   avatar_url?: string
   role: string
+  base_location?: string
+  dietary_preference?: string
   karma_points: number
   level: number
 }
@@ -36,102 +36,79 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   
-  // Use the Clerk-integrated Supabase client for authenticated requests
-  const authenticatedSupabase = useClerkSupabaseClient()
-  // Get the current user from Clerk
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get current user from Clerk
+        // Check authentication
         if (!user) {
           setLoading(false)
           router.push('/auth')
           return
         }
+
+        // Fetch user profile from API
+        const profileResponse = await fetch('/api/profile')
         
-        // Convert Clerk user to our AuthUser format
-        const authUser = {
-          id: user.id,
-          email: user.emailAddresses[0]?.emailAddress,
-          user_metadata: {
-            firstName: user.firstName,
-            lastName: user.lastName,
-            imageUrl: user.imageUrl,
-            fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-          },
-        }
-
-        // Fetch user profile
-        const { data: profile, error: profileError } = await authenticatedSupabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', authUser.id)
-          .maybeSingle()
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError)
-          throw profileError
-        }
-
-        if (!profile) {
-          // If profile doesn't exist, create a default one
-          const displayName = authUser.user_metadata?.fullName || authUser.email?.split('@')[0] || 'User'
-          const newProfile = await createProfile(authUser.id, displayName)
-          
-          if (newProfile) {
-            setUserProfile(newProfile)
-            setUserStats({ uploads: 0, helps: 0, rank: 0 })
-            setUserBadges([])
-            setLoading(false)
+        if (!profileResponse.ok) {
+          if (profileResponse.status === 404) {
+            // Profile doesn't exist, redirect to onboarding
+            router.push('/onboarding')
             return
           }
+          throw new Error('Failed to fetch profile')
         }
 
-        // Fetch user stats
-        const { data: contributions, error: contributionsError } = await authenticatedSupabase
-          .from('daily_contributions')
-          .select('*')
-          .eq('user_id', (profile as { id: string }).id)
+        const { profile } = await profileResponse.json()
+        setUserProfile(profile)
 
-        if (contributionsError) throw contributionsError
-
-        // Calculate stats
-        const uploads = (contributions as any[])?.filter((c: any) => c.contribution_type === 'upload').length || 0
-        const helps = (contributions as any[])?.length || 0
-
-        // Get user rank from leaderboard
-        const { data: leaderboardData, error: leaderboardError } = await authenticatedSupabase
-          .from('leaderboard')
-          .select('rank_position')
-          .eq('user_id', (profile as { id: string }).id)
-          .single()
-
-        if (leaderboardError && leaderboardError.code !== 'PGRST116') throw leaderboardError
-
-        const rank = (leaderboardData as any)?.rank_position || 0
+        // Fetch user stats from API
+        try {
+          const contributionsResponse = await fetch('/api/contributions')
+          if (contributionsResponse.ok) {
+            const { contributions } = await contributionsResponse.json()
+            const uploads = contributions?.filter((c: any) => c.contribution_type === 'upload').length || 0
+            const helps = contributions?.length || 0
+            
+            // Get user rank from leaderboard
+            const leaderboardResponse = await fetch('/api/leaderboard')
+            if (leaderboardResponse.ok) {
+              const { leaderboard } = await leaderboardResponse.json()
+              const userEntry = leaderboard?.find((entry: any) => entry.user_id === profile.id)
+              const rank = userEntry?.rank_position || 0
+              setUserStats({ uploads, helps, rank })
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching stats:', error)
+          // Use default stats if API calls fail
+          setUserStats({ uploads: 0, helps: 0, rank: 0 })
+        }
 
         // Fetch user badges
-        const { data: badges, error: badgesError } = await authenticatedSupabase
-          .from('user_badges')
-          .select('*')
-          .eq('user_id', (profile as { id: string }).id)
-
-        if (badgesError) throw badgesError
-
-        setUserProfile(profile)
-        setUserStats({ uploads, helps, rank })
-        setUserBadges(badges || [])
+        try {
+          const badgesResponse = await fetch('/api/badges')
+          if (badgesResponse.ok) {
+            const { badges } = await badgesResponse.json()
+            setUserBadges(badges || [])
+          }
+        } catch (error) {
+          console.error('Error fetching badges:', error)
+          setUserBadges([])
+        }
       } catch (error) {
         console.error('Error fetching user data:', error)
+        router.push('/onboarding')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchUserData()
-  }, [user])
+    if (isLoaded) {
+      fetchUserData()
+    }
+  }, [user, isLoaded, router])
 
   const getLevelIcon = () => {
     if (!userProfile) return 'ri-medal-fill'
@@ -252,7 +229,13 @@ export default function ProfilePage() {
           </div>
         </div>
         <h2 className="user-name">{userProfile.display_name}</h2>
-        <div className="user-handle">{userProfile.role} • Batch 2025</div>
+        <div className="user-handle">{userProfile.role} • {userProfile.base_location || 'Campus'}</div>
+        {userProfile.dietary_preference && (
+          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14px', color: '#666' }}>
+            <i className={userProfile.dietary_preference === 'vegetarian' ? 'ri-leaf-line' : 'ri-restaurant-line'}></i>
+            <span style={{ textTransform: 'capitalize' }}>{userProfile.dietary_preference}</span>
+          </div>
+        )}
       </div>
 
       {/* Points / Karma Card */}

@@ -1,11 +1,12 @@
 /**
- * Service for interacting with Modal DeepSeek OCR endpoint
+ * Service for OCR using Groq's Llama 4 Maverick model
+ * This provides an additional OCR option to complement OCR.space
  */
 
-interface OCRResponse {
+interface MaverickOCRResponse {
   text: string;
-  mode: string;
-  config: any;
+  model: string;
+  processingTime?: number;
 }
 
 interface MenuValidationResult {
@@ -14,84 +15,137 @@ interface MenuValidationResult {
   reason?: string;
 }
 
-class ModalOCRService {
-  private endpointUrl: string;
+class MaverickOCRService {
+  private apiKey: string;
+  private model: string;
 
   constructor() {
-    this.endpointUrl = process.env.MODAL_OCR_ENDPOINT || 'https://magadumpramod420--deepseek-ocr-ocr-endpoint.modal.run/';
-    console.log('[ModalOCRService] Initialized with endpoint:', this.endpointUrl);
+    this.apiKey = process.env.GROQ_API_KEY || '';
+    this.model = 'meta-llama/llama-4-maverick-17b-128e-instruct';
+    
+    if (!this.apiKey) {
+      console.warn('[MaverickOCRService] GROQ_API_KEY is not configured');
+    }
+    
+    console.log('[MaverickOCRService] Initialized with model:', this.model);
   }
 
   /**
-   * Process image through Modal OCR endpoint
+   * Process image using Groq's Llama 4 Maverick model for OCR
    */
-  async processImage(base64Image: string): Promise<OCRResponse> {
+  async processImage(base64Image: string): Promise<MaverickOCRResponse> {
     const requestId = Math.random().toString(36).substring(7);
-    console.log(`[ModalOCRService] Starting OCR processing:`, {
+    const startTime = Date.now();
+    
+    console.log(`[MaverickOCRService] Starting OCR processing:`, {
       requestId,
-      endpoint: this.endpointUrl,
+      model: this.model,
       base64Length: base64Image.length,
       timestamp: new Date().toISOString()
     });
 
     try {
-      console.log(`[ModalOCRService] Sending request to Modal OCR:`, {
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-
-      const response = await fetch(this.endpointUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_base64: base64Image,
-          prompt: "<image>\n<|grounding|>Convert the document to markdown. ",
-          mode: "base"
-        })
-      });
-
-      console.log(`[ModalOCRService] Received response from Modal OCR:`, {
-        requestId,
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        timestamp: new Date().toISOString()
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[ModalOCRService] OCR API error response:`, {
-          requestId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          timestamp: new Date().toISOString()
-        });
-        throw new Error(`OCR API error: ${response.status} ${response.statusText} - ${errorText}`);
+      // Import Groq dynamically to avoid SSR issues
+      const { default: Groq } = await import('groq-sdk');
+      
+      if (!this.apiKey) {
+        throw new Error('GROQ_API_KEY is not configured');
       }
 
-      const result = await response.json();
-      
-      console.log(`[ModalOCRService] OCR processing completed successfully:`, {
+      console.log(`[MaverickOCRService] Initializing Groq API:`, {
         requestId,
-        hasText: !!result.text,
-        textLength: result.text?.length || 0,
-        textPreview: result.text?.substring(0, 100),
-        mode: result.mode,
+        hasApiKey: !!this.apiKey,
+        apiKeyPrefix: this.apiKey?.substring(0, 8) + '...',
         timestamp: new Date().toISOString()
       });
 
-      return result;
+      const groq = new Groq({ apiKey: this.apiKey });
+
+      // Prepare the image for the Maverick model
+      const imageContent = base64Image.startsWith('data:') 
+        ? base64Image 
+        : `data:image/jpeg;base64,${base64Image}`;
+
+      const prompt = `
+        Please extract all text from this image accurately.
+        
+        Requirements:
+        1. Extract ALL visible text, including menu items, prices, descriptions, and section headers
+        2. Preserve the structure and formatting as much as possible
+        3. Include prices with their corresponding menu items
+        4. Maintain line breaks and sections to preserve readability
+        5. If you see currency symbols (₹, $, Rs, etc.), include them with the prices
+        6. Pay special attention to:
+           - Food item names
+           - Prices and currency symbols
+           - Section headings (appetizers, main course, etc.)
+           - Descriptions of food items
+           - Any numbers or quantities
+        
+        Return the extracted text in a clean, readable format that preserves the menu structure.
+      `;
+
+      console.log(`[MaverickOCRService] Sending request to Groq API:`, {
+        requestId,
+        promptLength: prompt.length,
+        imagePreview: imageContent.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
+
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert OCR system specialized in extracting text from restaurant menu images. Extract all text accurately while preserving structure and formatting."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: prompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageContent
+                }
+              }
+            ]
+          }
+        ],
+        model: this.model,
+        temperature: 0.1, // Low temperature for more accurate OCR
+        max_tokens: 4096,
+        top_p: 0.9,
+        stream: false
+      });
+
+      const extractedText = completion.choices[0]?.message?.content || '';
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`[MaverickOCRService] OCR processing completed successfully:`, {
+        requestId,
+        hasText: !!extractedText,
+        textLength: extractedText.length,
+        textPreview: extractedText.substring(0, 200),
+        processingTime,
+        timestamp: new Date().toISOString()
+      });
+
+      return {
+        text: extractedText,
+        model: this.model,
+        processingTime
+      };
     } catch (error) {
-      console.error(`[ModalOCRService] Error calling Modal OCR service:`, {
+      console.error(`[MaverickOCRService] Error processing image:`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString()
       });
-      throw new Error(`Failed to process image with OCR: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Maverick OCR error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -100,7 +154,7 @@ class ModalOCRService {
    */
   async validateMenu(ocrText: string): Promise<MenuValidationResult> {
     const requestId = Math.random().toString(36).substring(7);
-    console.log(`[ModalOCRService] Starting menu validation with Groq:`, {
+    console.log(`[MaverickOCRService] Starting menu validation:`, {
       requestId,
       textLength: ocrText.length,
       textPreview: ocrText.substring(0, 100),
@@ -111,22 +165,11 @@ class ModalOCRService {
       // Import Groq dynamically to avoid SSR issues
       const { default: Groq } = await import('groq-sdk');
       
-      if (!process.env.GROQ_API_KEY) {
-        console.error(`[ModalOCRService] GROQ_API_KEY is not configured:`, {
-          requestId,
-          timestamp: new Date().toISOString()
-        });
+      if (!this.apiKey) {
         throw new Error('GROQ_API_KEY is not configured');
       }
 
-      console.log(`[ModalOCRService] Initializing Groq API:`, {
-        requestId,
-        hasApiKey: !!process.env.GROQ_API_KEY,
-        apiKeyPrefix: process.env.GROQ_API_KEY?.substring(0, 8) + '...',
-        timestamp: new Date().toISOString()
-      });
-
-      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+      const groq = new Groq({ apiKey: this.apiKey });
 
       const prompt = `
         Analyze the following text and determine if it represents a restaurant menu.
@@ -153,7 +196,7 @@ class ModalOCRService {
         Return valid JSON only, no additional text.
       `;
 
-      console.log(`[ModalOCRService] Sending request to Groq API:`, {
+      console.log(`[MaverickOCRService] Sending validation request to Groq API:`, {
         requestId,
         promptLength: prompt.length,
         timestamp: new Date().toISOString()
@@ -178,17 +221,17 @@ class ModalOCRService {
 
       const text = completion.choices[0]?.message?.content || '';
       
-      console.log(`[ModalOCRService] Received response from Groq:`, {
+      console.log(`[MaverickOCRService] Received validation response:`, {
         requestId,
         responseLength: text.length,
         responsePreview: text.substring(0, 200),
         timestamp: new Date().toISOString()
       });
       
-      // Clean and parse the JSON response
+      // Clean and parse JSON response
       const cleanedText = this.cleanJsonResponse(text);
       
-      console.log(`[ModalOCRService] Cleaned JSON response:`, {
+      console.log(`[MaverickOCRService] Cleaned JSON response:`, {
         requestId,
         cleanedText,
         timestamp: new Date().toISOString()
@@ -196,7 +239,7 @@ class ModalOCRService {
       
       const validationResult = JSON.parse(cleanedText);
       
-      console.log(`[ModalOCRService] Menu validation completed:`, {
+      console.log(`[MaverickOCRService] Menu validation completed:`, {
         requestId,
         isMenu: validationResult.isMenu,
         confidence: validationResult.confidence,
@@ -210,7 +253,7 @@ class ModalOCRService {
         reason: validationResult.reason || ''
       };
     } catch (error) {
-      console.error(`[ModalOCRService] Error validating menu with Groq:`, {
+      console.error(`[MaverickOCRService] Error validating menu:`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -229,9 +272,12 @@ class ModalOCRService {
   /**
    * Process image and validate if it's a menu in one step
    */
-  async processAndValidateMenu(base64Image: string): Promise<{ ocrResult: OCRResponse; validationResult: MenuValidationResult }> {
+  async processAndValidateMenu(base64Image: string): Promise<{ 
+    ocrResult: MaverickOCRResponse; 
+    validationResult: MenuValidationResult 
+  }> {
     const requestId = Math.random().toString(36).substring(7);
-    console.log(`[ModalOCRService] Starting combined OCR and validation process:`, {
+    console.log(`[MaverickOCRService] Starting combined OCR and validation process:`, {
       requestId,
       base64Length: base64Image.length,
       timestamp: new Date().toISOString()
@@ -239,29 +285,30 @@ class ModalOCRService {
 
     try {
       // First, get OCR text
-      console.log(`[ModalOCRService] Step 1: Processing image with OCR:`, {
+      console.log(`[MaverickOCRService] Step 1: Processing image with Maverick OCR:`, {
         requestId,
         timestamp: new Date().toISOString()
       });
       
       const ocrResult = await this.processImage(base64Image);
       
-      console.log(`[ModalOCRService] Step 1 completed: OCR processing successful:`, {
+      console.log(`[MaverickOCRService] Step 1 completed: OCR processing successful:`, {
         requestId,
         hasText: !!ocrResult.text,
         textLength: ocrResult.text?.length || 0,
+        processingTime: ocrResult.processingTime,
         timestamp: new Date().toISOString()
       });
       
       // Then validate if it's a menu
-      console.log(`[ModalOCRService] Step 2: Validating if text represents a menu:`, {
+      console.log(`[MaverickOCRService] Step 2: Validating if text represents a menu:`, {
         requestId,
         timestamp: new Date().toISOString()
       });
       
       const validationResult = await this.validateMenu(ocrResult.text);
       
-      console.log(`[ModalOCRService] Combined process completed successfully:`, {
+      console.log(`[MaverickOCRService] Combined process completed successfully:`, {
         requestId,
         isMenu: validationResult.isMenu,
         confidence: validationResult.confidence,
@@ -275,7 +322,7 @@ class ModalOCRService {
         validationResult
       };
     } catch (error) {
-      console.error(`[ModalOCRService] Error in processAndValidateMenu:`, {
+      console.error(`[MaverickOCRService] Error in processAndValidateMenu:`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -305,4 +352,5 @@ class ModalOCRService {
 }
 
 // Export a singleton instance
-export const modalOCRService = new ModalOCRService();
+export const maverickOCRService = new MaverickOCRService();
+export type { MaverickOCRResponse, MenuValidationResult };
