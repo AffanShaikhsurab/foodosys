@@ -21,7 +21,7 @@ export async function DELETE(
   try {
     const { imageId } = params
 
-    // Get the authorization header
+    // Get authorization header
     const authHeader = request.headers.get('authorization')
     console.log('[DELETE-API] Auth header present:', !!authHeader)
     
@@ -33,17 +33,38 @@ export async function DELETE(
       )
     }
 
-    // Extract the token
+    // Extract token
     const token = authHeader.replace('Bearer ', '')
     console.log('[DELETE-API] Token extracted, length:', token.length)
 
-    // Verify the user's token
-    console.log('[DELETE-API] Verifying user token...')
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    console.log('[DELETE-API] Auth result:', { userId: user?.id, hasError: !!authError, errorMessage: authError?.message })
+    // Verify Clerk JWT token
+    console.log('[DELETE-API] Verifying Clerk token...')
+    let userId: string | null = null
     
-    if (authError || !user) {
-      console.log('[DELETE-API] ❌ Auth verification failed:', authError?.message)
+    try {
+      // Import Clerk's verifyToken function
+      const { verifyToken } = await import('@clerk/backend')
+      
+      const payload = await verifyToken(token, {
+        jwtKey: process.env.CLERK_SECRET_KEY,
+      })
+      
+      if (payload && payload.sub) {
+        userId = payload.sub
+        console.log('[DELETE-API] Auth result:', { userId, hasError: false })
+      } else {
+        throw new Error('Invalid token payload')
+      }
+    } catch (error) {
+      console.log('[DELETE-API] ❌ Auth verification failed:', error instanceof Error ? error.message : String(error))
+      return NextResponse.json(
+        { error: 'Unauthorized: Invalid auth token' },
+        { status: 401 }
+      )
+    }
+    
+    if (!userId) {
+      console.log('[DELETE-API] ❌ No user ID found in token')
       return NextResponse.json(
         { error: 'Unauthorized: Invalid auth token' },
         { status: 401 }
@@ -51,11 +72,11 @@ export async function DELETE(
     }
 
     // Check if user is admin
-    console.log('[DELETE-API] Checking admin status for user:', user.id)
+    console.log('[DELETE-API] Checking admin status for user:', userId)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     console.log('[DELETE-API] Profile result:', { role: profile?.role, hasProfile: !!profile, profileError: profileError?.message })
@@ -74,7 +95,7 @@ export async function DELETE(
 
     console.log('[DELETE-API] ✅ Admin authorization successful')
 
-    // Get the image details before deletion
+    // Get image details before deletion
     console.log('[DELETE-API] Fetching image details for ID:', imageId)
     const { data: menuImage, error: imageError } = await supabaseAdmin
       .from('menu_images')
@@ -103,12 +124,12 @@ export async function DELETE(
     const reason = body.reason || 'No reason provided'
     console.log('[DELETE-API] Deletion reason:', reason)
 
-    // Log the deletion in admin_activity_log
+    // Log deletion in admin_activity_log
     console.log('[DELETE-API] Logging admin activity...')
     const { error: logError } = await supabaseAdmin
       .from('admin_activity_log')
       .insert({
-        admin_user_id: user.id,
+        admin_user_id: userId,
         action_type: 'delete_image',
         target_id: imageId,
         target_type: 'menu_image',
@@ -139,7 +160,7 @@ export async function DELETE(
       console.log('[DELETE-API] ✅ Storage deletion successful')
     }
 
-    // Delete the menu_image record (this will cascade to OCR results and menus due to FK constraints)
+    // Delete menu_image record (this will cascade to OCR results and menus due to FK constraints)
     console.log('[DELETE-API] Deleting database record:', imageId)
     const { error: deleteError } = await supabaseAdmin
       .from('menu_images')

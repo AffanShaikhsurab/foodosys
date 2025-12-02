@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase'
 import { DatabaseError, handleAPIError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (await createServerClient())
       .from('restaurants')
       .select('id, name, location, distance_estimate_m, slug, created_at, latitude, longitude')
       .order('name')

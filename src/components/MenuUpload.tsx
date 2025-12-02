@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import CameraComponent from './CameraComponent'
 import { PhotoUploadData } from '@/lib/types'
-import { getCurrentUser } from '@/lib/auth'
+import { useUser } from '@clerk/nextjs'
 import { logUpload, logger } from '@/lib/logger'
 
 interface UploadResponse {
@@ -47,6 +47,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { user } = useUser()
 
   // Log component mount
   useEffect(() => {
@@ -67,7 +68,6 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
       logUpload('Starting authentication check', { operation: 'auth_check_start' })
       
       try {
-        const user = await getCurrentUser()
         const isAuth = !!user
         
         logUpload('Authentication check completed', {
@@ -91,7 +91,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     }
 
     checkAuth()
-  }, [])
+  }, [user])
 
   // Function to convert base64 to File object
   const base64ToFile = (base64: string, filename: string = 'menu-photo.jpg'): File => {

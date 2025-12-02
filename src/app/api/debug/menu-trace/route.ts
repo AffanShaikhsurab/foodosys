@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { createServerClient, supabaseAdmin } from '@/lib/supabase'
 
 /**
  * DEBUG ENDPOINT: Traces the complete menu retrieval flow
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     
     // Step 1: Look up restaurant
     console.log(`[DEBUG] ${requestId} Step 1: Restaurant lookup`)
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await (await createServerClient())
       .from('restaurants')
       .select('*')
       .eq('slug', slug)
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     
     // Step 5: Run the actual query that the menus API uses
     console.log(`[DEBUG] ${requestId} Step 5: Running actual menus API query`)
-    const { data: queryResult, error: queryError } = await supabase
+    const { data: queryResult, error: queryError } = await (await createServerClient())
       .from('menu_images')
       .select('*, ocr_results(*)')
       .eq('restaurant_id', restaurantId)

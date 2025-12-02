@@ -13,9 +13,11 @@
     "seed-restaurants": "node scripts/seed-restaurants.js",
     "test-api": "node scripts/test-api.js",
     "run-menu-migration": "node scripts/run-menu-migration.js",
-    "test-menu-analysis": "node scripts/test-menu-analysis.js"
+    "test-menu-analysis": "node scripts/test-menu-analysis.js",
+    "test-clerk-supabase": "npx tsx scripts/test-clerk-supabase-simple.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.35.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@google/generative-ai": "^0.24.1",
@@ -34,7 +36,8 @@
     "react": "^18",
     "react-camera-pro": "^1.4.0",
     "react-dom": "^18",
-    "styled-components": "^5.3.11"
+    "styled-components": "^5.3.11",
+    "svix": "^1.81.0"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -1,5 +1,5 @@
-import { supabase } from './supabase'
-import { logAuth, logger } from './logger'
+import { currentUser } from '@clerk/nextjs/server'
+import { createServerSupabaseClient } from './clerk-supabase-server'
 
 export interface AuthUser {
   id: string
@@ -8,118 +8,29 @@ export interface AuthUser {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const startTime = Date.now()
-  
-  logAuth('Getting current user', {
-    operation: 'get_current_user_start'
-  })
-  
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    const processingTime = Date.now() - startTime
-    
-    logAuth('Current user retrieved successfully', {
-      operation: 'get_current_user_success',
-      userId: user?.id || 'none',
-      hasUser: !!user,
-      processingTime
-    })
-    
-    return user
+    const user = await currentUser()
+
+    if (!user) return null
+
+    return {
+      id: user.id,
+      email: user.emailAddresses[0]?.emailAddress,
+      user_metadata: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        imageUrl: user.imageUrl,
+        fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      },
+    }
   } catch (error) {
-    const processingTime = Date.now() - startTime
-    
-    logAuth('Error getting current user', {
-      operation: 'get_current_user_error',
-      processingTime,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      errorType: error instanceof Error ? error.constructor.name : 'Unknown'
-    })
-    
     console.error('Error getting current user:', error)
     return null
   }
 }
 
-export async function signIn(email: string, password: string) {
-  const startTime = Date.now()
-  
-  logAuth('Sign in attempt started', {
-    operation: 'sign_in_start',
-    email: email.replace(/(.{2}).*(@.*)/, '$1***$2') // Partially mask email for logging
-  })
-  
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    if (error) {
-      const processingTime = Date.now() - startTime
-      
-      logAuth('Sign in failed - Supabase error', {
-        operation: 'sign_in_failed',
-        processingTime,
-        errorCode: error.name || 'unknown',
-        errorMessage: error.message
-      })
-      
-      throw error
-    }
-    
-    const processingTime = Date.now() - startTime
-    logAuth('Sign in completed successfully', {
-      operation: 'sign_in_success',
-      userId: data.user?.id,
-      email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-      processingTime
-    })
-    
-    return data
-  } catch (error) {
-    const processingTime = Date.now() - startTime
-    
-    logAuth('Sign in error - exception', {
-      operation: 'sign_in_exception',
-      processingTime,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      errorType: error instanceof Error ? error.constructor.name : 'Unknown'
-    })
-    
-    console.error('Sign in error:', error)
-    throw error
-  }
-}
-
-export async function signUp(email: string, password: string, metadata?: Record<string, any>) {
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata
-      }
-    })
-
-    if (error) throw error
-    return data
-  } catch (error) {
-    console.error('Sign up error:', error)
-    throw error
-  }
-}
-
-export async function signOut() {
-  try {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    return true
-  } catch (error) {
-    console.error('Sign out error:', error)
-    throw error
-  }
-}
+// Note: signIn, signUp, and signOut are now handled by Clerk UI components
+// Users will use Clerk's <SignIn />, <SignUp />, and <UserButton /> components
 
 export async function createProfile(userId: string, displayName: string, avatarUrl?: string) {
   try {
@@ -153,6 +64,7 @@ export async function getUserProfile(userId?: string): Promise<any | null> {
     const user = userId ? { id: userId } : await getCurrentUser()
     if (!user) return null
 
+    const supabase = await createServerSupabaseClient()
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')

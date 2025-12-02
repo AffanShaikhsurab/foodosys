@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase } from './supabase-browser'
 
 export async function checkMenuAvailability(restaurantId: string): Promise<boolean> {
   try {

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { getCurrentUser, createProfile, signOut } from '@/lib/auth'
+import { useClerkSupabaseClient } from '@/lib/clerk-supabase'
+import { createProfile } from '@/lib/auth-client'
+import { useClerk, useUser } from '@clerk/nextjs'
 import BottomNav from '@/components/BottomNav'
 import { useRouter } from 'next/navigation'
 
@@ -34,24 +35,39 @@ export default function ProfilePage() {
   const [userBadges, setUserBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  
+  // Use the Clerk-integrated Supabase client for authenticated requests
+  const authenticatedSupabase = useClerkSupabaseClient()
+  // Get the current user from Clerk
+  const { user } = useUser()
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get current user
-        const user = await getCurrentUser()
-        
+        // Get current user from Clerk
         if (!user) {
           setLoading(false)
           router.push('/auth')
           return
         }
+        
+        // Convert Clerk user to our AuthUser format
+        const authUser = {
+          id: user.id,
+          email: user.emailAddresses[0]?.emailAddress,
+          user_metadata: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            imageUrl: user.imageUrl,
+            fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          },
+        }
 
         // Fetch user profile
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await authenticatedSupabase
           .from('user_profiles')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', authUser.id)
           .maybeSingle()
 
         if (profileError) {
@@ -61,8 +77,8 @@ export default function ProfilePage() {
 
         if (!profile) {
           // If profile doesn't exist, create a default one
-          const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'
-          const newProfile = await createProfile(user.id, displayName)
+          const displayName = authUser.user_metadata?.fullName || authUser.email?.split('@')[0] || 'User'
+          const newProfile = await createProfile(authUser.id, displayName)
           
           if (newProfile) {
             setUserProfile(newProfile)
@@ -74,7 +90,7 @@ export default function ProfilePage() {
         }
 
         // Fetch user stats
-        const { data: contributions, error: contributionsError } = await supabase
+        const { data: contributions, error: contributionsError } = await authenticatedSupabase
           .from('daily_contributions')
           .select('*')
           .eq('user_id', (profile as { id: string }).id)
@@ -86,7 +102,7 @@ export default function ProfilePage() {
         const helps = (contributions as any[])?.length || 0
 
         // Get user rank from leaderboard
-        const { data: leaderboardData, error: leaderboardError } = await supabase
+        const { data: leaderboardData, error: leaderboardError } = await authenticatedSupabase
           .from('leaderboard')
           .select('rank_position')
           .eq('user_id', (profile as { id: string }).id)
@@ -97,7 +113,7 @@ export default function ProfilePage() {
         const rank = (leaderboardData as any)?.rank_position || 0
 
         // Fetch user badges
-        const { data: badges, error: badgesError } = await supabase
+        const { data: badges, error: badgesError } = await authenticatedSupabase
           .from('user_badges')
           .select('*')
           .eq('user_id', (profile as { id: string }).id)
@@ -115,7 +131,7 @@ export default function ProfilePage() {
     }
 
     fetchUserData()
-  }, [])
+  }, [user])
 
   const getLevelIcon = () => {
     if (!userProfile) return 'ri-medal-fill'
@@ -177,6 +193,8 @@ export default function ProfilePage() {
     return Math.max(0, nextLevelPoints - userProfile.karma_points)
   }
 
+  const { signOut } = useClerk()
+  
   const handleSignOut = async () => {
     try {
       await signOut()

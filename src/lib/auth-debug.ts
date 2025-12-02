@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { createServerClient } from './supabase'
 import { logAuth, logger } from './logger'
 
 export interface AuthUser {
@@ -15,7 +15,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   })
   
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabaseClient = await createServerClient()
+    const { data: { user } } = await supabaseClient.auth.getUser()
     const processingTime = Date.now() - startTime
     
     logAuth('Current user retrieved successfully', {
@@ -46,7 +47,8 @@ export async function getUserProfile(userId?: string): Promise<any | null> {
     const user = userId ? { id: userId } : await getCurrentUser()
     if (!user) return null
 
-    const { data, error } = await supabase
+    const supabaseClient = await createServerClient()
+    const { data, error } = await supabaseClient
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)

@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp, groupImagesByMealType } from '@/lib/utils'
 import { MenuImage, OCRResult } from '@/lib/types'
 import ImageViewer from '@/components/ImageViewer'
-import { isAdmin } from '@/lib/auth'
+import { useUser } from '@clerk/nextjs'
 
 interface DisplayMenu extends MenuImage {
   ocr_results?: OCRResult
@@ -24,6 +24,7 @@ interface Restaurant {
 
 export default function RestaurantDetail({ params }: { params: { slug: string } }) {
   const router = useRouter()
+  const { user } = useUser()
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [menus, setMenus] = useState<DisplayMenu[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,8 +65,9 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         setHelpfulVotes(initialVotes)
         setUserVotes(initialUserVotes)
 
-        // Check if user is admin
-        const adminStatus = await isAdmin()
+        // Check if user is admin (client-side check)
+        // This is a simplified check - in production, you should verify this server-side
+        const adminStatus = user?.publicMetadata?.role === 'admin' || false
         setIsAdminUser(adminStatus)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data')

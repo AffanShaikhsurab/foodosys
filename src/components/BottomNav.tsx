@@ -1,34 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth'
+import { usePathname } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import { HomeRounded, PersonRounded, CameraAltRounded, LockRounded } from '@mui/icons-material'
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const user = await getCurrentUser()
-        setIsAuthenticated(!!user)
-        setUserEmail(user?.email || null)
-      } catch (error) {
-        console.error('Error checking authentication:', error)
-        setIsAuthenticated(false)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkAuth()
-  }, [])
+  const { isLoaded, isSignedIn, user } = useUser()
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true
@@ -36,7 +15,7 @@ export default function BottomNav() {
     return false
   }
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="bottom-nav-container">
         <div className="bottom-nav">
@@ -58,19 +37,19 @@ export default function BottomNav() {
         </Link>
 
         {/* Center "Upload" FAB */}
-        {isAuthenticated ? (
+        {isSignedIn ? (
           <Link href="/upload" className="nav-upload">
             <CameraAltRounded sx={{ fontSize: 28 }} />
             <span className="nav-label">Scan</span>
           </Link>
         ) : (
-          <Link href="/auth" className="nav-upload" style={{ backgroundColor: '#FEF3C7' }}>
+          <Link href="/sign-in" className="nav-upload" style={{ backgroundColor: '#FEF3C7' }}>
             <LockRounded sx={{ fontSize: 24, color: '#92400E' }} />
             <span className="nav-label" style={{ color: '#92400E' }}>Sign In</span>
           </Link>
         )}
 
-        {isAuthenticated ? (
+        {isSignedIn ? (
           <Link href="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PersonRounded sx={{ fontSize: 28 }} />
@@ -90,7 +69,7 @@ export default function BottomNav() {
             <span className="nav-label">Profile</span>
           </Link>
         ) : (
-          <Link href="/auth" className={`nav-item ${isActive('/auth') ? 'active' : ''}`}>
+          <Link href="/sign-in" className={`nav-item ${isActive('/sign-in') ? 'active' : ''}`}>
             <PersonRounded sx={{ fontSize: 28 }} />
             <span className="nav-label">Profile</span>
           </Link>
@@ -98,7 +77,7 @@ export default function BottomNav() {
       </div>
 
       {/* User Email Display */}
-      {isAuthenticated && userEmail && (
+      {isSignedIn && user?.primaryEmailAddress && (
         <div style={{
           position: 'absolute',
           bottom: '70px',
@@ -114,7 +93,7 @@ export default function BottomNav() {
           textOverflow: 'ellipsis',
           maxWidth: '200px'
         }}>
-          {userEmail}
+          {user.primaryEmailAddress.emailAddress}
         </div>
       )}
     </div>

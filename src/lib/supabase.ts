@@ -1,48 +1,27 @@
 import { createClient } from '@supabase/supabase-js'
-import { logSupabase, logger } from './logger'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-// Debug logging for environment variables
-console.log('[Supabase Init] Environment check:', {
-  hasUrl: !!supabaseUrl,
-  hasAnonKey: !!supabaseAnonKey,
-  hasServiceKey: !!supabaseServiceRoleKey,
-  urlValue: supabaseUrl?.substring(0, 30),
-  serviceKeyPrefix: supabaseServiceRoleKey?.substring(0, 20),
-  allEnvKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE') || k.includes('supabase')).sort()
-})
 
 // Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env.local file.')
 }
 
-logSupabase('Supabase clients initialized', {
-  operation: 'supabase_init',
-  hasUrl: !!supabaseUrl,
-  hasAnonKey: !!supabaseAnonKey,
-  hasServiceKey: !!supabaseServiceRoleKey,
-  urlPrefix: supabaseUrl?.substring(0, 20) + '...'
-})
-
-// Create a singleton instance for the browser to prevent multiple instances
-let supabaseInstance: ReturnType<typeof createClient> | null = null
-
-export const supabase = (() => {
-  if (supabaseInstance) return supabaseInstance
+// Server-side client with Clerk authentication
+// Use this in Server Components and API routes
+export async function createServerClient() {
+  // Import auth only on server side to avoid webpack issues
+  const { auth } = await import('@clerk/nextjs/server')
   
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    }
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    async accessToken() {
+      const { getToken } = await auth()
+      return await getToken()
+    },
   })
-  
-  return supabaseInstance
-})()
+}
 
 // Admin client for server-side operations
 export const supabaseAdmin = (() => {
@@ -59,7 +38,7 @@ export const supabaseAdmin = (() => {
       }
     })
   }
-  
+
   console.log('[Supabase Admin] Service role key configured successfully')
   return createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
@@ -69,11 +48,4 @@ export const supabaseAdmin = (() => {
   })
 })()
 
-logSupabase('Supabase clients created successfully', {
-  operation: 'supabase_clients_created',
-  clientType: 'both',
-  config: {
-    autoRefreshToken: true,
-    persistSession: true
-  }
-})
+console.log('[Supabase] Server client configured with native Clerk integration')

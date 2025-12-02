@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@/lib/supabase'
 import { NotFoundError, DatabaseError, handleAPIError } from '@/lib/errors'
 
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
     // First get the restaurant
     console.log(`[Menus API] ${requestId} Looking up restaurant by slug:`, { slug })
     
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await (await createServerClient())
       .from('restaurants')
       .select('id, name, slug')
       .eq('slug', slug)
@@ -60,7 +60,7 @@ export async function GET(
       }
     })
     
-    const query = supabase
+    const query = (await createServerClient())
       .from('menu_images')
       .select(`
         id,

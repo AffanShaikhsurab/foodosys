@@ -1,8 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { createServerClient, supabaseAdmin } from '@/lib/supabase'
 import { ocrService } from '@/lib/ocr'
 import { menuAnalyzer } from '@/lib/menu-analyzer'
+import { modalOCRService } from '@/lib/modal-ocr'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
 
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
   })
   
   try {
-    // Verify authentication
+    // Verify authentication using Clerk
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
     
@@ -41,14 +42,30 @@ export async function POST(request: NextRequest) {
     let userId: string | null = null
     
     if (token) {
-      // Verify JWT token
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-      if (error || !user) {
-        logUpload('JWT token verification failed', {
-          operation: 'jwt_auth_failed',
+      // Verify Clerk JWT token
+      try {
+        // Import Clerk's verifyToken function
+        const { verifyToken } = await import('@clerk/backend')
+        
+        const payload = await verifyToken(token, {
+          jwtKey: process.env.CLERK_SECRET_KEY,
+        })
+        
+        if (payload && payload.sub) {
+          userId = payload.sub
+          logUpload('Clerk JWT token verification successful', {
+            operation: 'clerk_jwt_auth_success',
+            requestId,
+            userId
+          })
+        } else {
+          throw new Error('Invalid token payload')
+        }
+      } catch (error) {
+        logUpload('Clerk JWT token verification failed', {
+          operation: 'clerk_jwt_auth_failed',
           requestId,
-          error: error?.message,
-          hasUser: !!user
+          error: error instanceof Error ? error.message : String(error)
         })
         
         return NextResponse.json(
@@ -56,22 +73,29 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         )
       }
-      userId = user.id
-      
-      logUpload('JWT token verification successful', {
-        operation: 'jwt_auth_success',
-        requestId,
-        userId
-      })
     } else {
-      // Try to get user from session cookie
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error || !user) {
-        logUpload('Session cookie authentication failed', {
-          operation: 'session_auth_failed',
+      // Try to get user from Clerk session
+      try {
+        // Import Clerk's auth function for server-side
+        const { auth } = await import('@clerk/nextjs/server')
+        
+        const { userId: clerkUserId } = await auth()
+        
+        if (clerkUserId) {
+          userId = clerkUserId
+          logUpload('Clerk session authentication successful', {
+            operation: 'clerk_session_auth_success',
+            requestId,
+            userId
+          })
+        } else {
+          throw new Error('No active Clerk session')
+        }
+      } catch (error) {
+        logUpload('Clerk session authentication failed', {
+          operation: 'clerk_session_auth_failed',
           requestId,
-          error: error?.message,
-          hasUser: !!user
+          error: error instanceof Error ? error.message : String(error)
         })
         
         return NextResponse.json(
@@ -79,13 +103,6 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         )
       }
-      userId = user.id
-      
-      logUpload('Session cookie authentication successful', {
-        operation: 'session_auth_success',
-        requestId,
-        userId
-      })
     }
 
     if (!userId) {
@@ -151,6 +168,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Get restaurant by slug
+    const supabase = await createServerClient()
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id')
@@ -380,9 +398,10 @@ export async function POST(request: NextRequest) {
     let ocrResult = null
     let ocrProcessingSucceeded = false
     let ocrErrorDetails = null
+    let menuValidationResult = null
     
     try {
-      console.log(`[Upload API] Calling ocrService.parseImageFromBase64:`, {
+      console.log(`[Upload API] Calling modalOCRService.processAndValidateMenu:`, {
         base64Length: base64Image.length,
         mimeType: file.type,
         imageId: menuImageId,
@@ -390,57 +409,109 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      ocrResult = await ocrService.parseImageFromBase64(base64Image, {
-        language: 'eng',
-        OCREngine: '1',
-        isOverlayRequired: true
-      })
-      
-      console.log(`[Upload API] OCR Service response received:`, {
-        hasResponse: !!ocrResult,
-        isErrored: ocrResult?.IsErroredOnProcessing,
-        hasParsedResults: !!ocrResult?.ParsedResults,
-        parsedResultsCount: ocrResult?.ParsedResults?.length || 0,
-        processingTime: ocrResult?.ProcessingTimeInMilliseconds,
+      // Process image with Modal OCR and validate if it's a menu
+      console.log(`[Upload API] Step 1: Starting Modal OCR and menu validation:`, {
+        imageId: menuImageId,
+        base64Length: base64Image.length,
+        mimeType: file.type,
         requestId,
         timestamp: new Date().toISOString()
       })
       
-      if (ocrResult?.IsErroredOnProcessing) {
-        console.error(`[Upload API] OCR Result indicates error:`, {
-          isErroredOnProcessing: ocrResult.IsErroredOnProcessing,
-          errorMessage: ocrResult.ErrorMessage,
-          errorMessages: ocrResult.ErrorMessages,
+      const { ocrResult: modalOcrResult, validationResult } = await modalOCRService.processAndValidateMenu(base64Image)
+      
+      console.log(`[Upload API] Step 1 completed: Modal OCR Service response received:`, {
+        imageId: menuImageId,
+        hasResponse: !!modalOcrResult,
+        textLength: modalOcrResult?.text?.length || 0,
+        textPreview: modalOcrResult?.text?.substring(0, 100),
+        mode: modalOcrResult?.mode,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
+      
+      console.log(`[Upload API] Step 1 completed: Menu validation result:`, {
+        imageId: menuImageId,
+        isMenu: validationResult.isMenu,
+        confidence: validationResult.confidence,
+        reason: validationResult.reason,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Check if the image is a valid menu
+      const confidenceThreshold = 0.7;
+      console.log(`[Upload API] Step 2: Checking menu validation against threshold:`, {
+        imageId: menuImageId,
+        isMenu: validationResult.isMenu,
+        confidence: validationResult.confidence,
+        threshold: confidenceThreshold,
+        passesValidation: validationResult.isMenu && validationResult.confidence >= confidenceThreshold,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
+      
+      if (!validationResult.isMenu || validationResult.confidence < confidenceThreshold) {
+        console.warn(`[Upload API] Step 2 failed: Image is not a valid menu:`, {
+          imageId: menuImageId,
+          isMenu: validationResult.isMenu,
+          confidence: validationResult.confidence,
+          threshold: confidenceThreshold,
+          reason: validationResult.reason,
           requestId,
           timestamp: new Date().toISOString()
         })
-        ocrErrorDetails = {
-          isErroredOnProcessing: true,
-          errorMessages: ocrResult.ErrorMessage || ocrResult.ErrorMessages
-        }
-      } else if (!ocrResult?.ParsedResults || ocrResult.ParsedResults.length === 0) {
-        console.warn(`[Upload API] OCR succeeded but no parsed results:`, {
-          hasParsedResults: !!ocrResult?.ParsedResults,
-          parsedResultsLength: ocrResult?.ParsedResults?.length,
-          requestId,
-          timestamp: new Date().toISOString()
-        })
-        ocrErrorDetails = {
-          noParsedResults: true,
-          message: 'OCR succeeded but returned no text'
-        }
-      } else {
-        console.log(`[Upload API] OCR completed successfully:`, {
-          success: true,
-          processingTime: ocrResult.ProcessingTimeInMilliseconds,
-          textLength: ocrResult.ParsedResults[0]?.ParsedText?.length || 0,
-          textPreview: ocrResult.ParsedResults[0]?.ParsedText?.substring(0, 100),
-          textOverlayLines: ocrResult.ParsedResults[0]?.TextOverlay?.Lines?.length || 0,
-          requestId,
-          timestamp: new Date().toISOString()
-        })
-        ocrProcessingSucceeded = true
+        
+        // Return error response for non-menu images
+        return NextResponse.json(
+          { 
+            error: 'The uploaded image is not a valid menu',
+            details: validationResult.reason || 'The image does not appear to contain a restaurant menu',
+            confidence: validationResult.confidence,
+            isMenu: validationResult.isMenu,
+            threshold: confidenceThreshold,
+            imageId: menuImageId,
+            requestId
+          },
+          { status: 400 }
+        )
       }
+      
+      console.log(`[Upload API] Step 2 passed: Image validated as a menu:`, {
+        imageId: menuImageId,
+        isMenu: validationResult.isMenu,
+        confidence: validationResult.confidence,
+        reason: validationResult.reason,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Convert Modal OCR result to the expected format for compatibility
+      ocrResult = {
+        IsErroredOnProcessing: false,
+        ParsedResults: [{
+          ParsedText: modalOcrResult.text,
+          TextOverlay: {
+            Lines: [] // Modal OCR doesn't provide this level of detail
+          }
+        }],
+        ProcessingTimeInMilliseconds: 0 // Modal OCR doesn't provide this
+      }
+      
+      ocrProcessingSucceeded = true
+      menuValidationResult = validationResult
+      
+      console.log(`[Upload API] OCR and menu validation completed successfully:`, {
+        imageId: menuImageId,
+        success: true,
+        textLength: modalOcrResult.text?.length || 0,
+        textPreview: modalOcrResult.text?.substring(0, 100),
+        isMenu: validationResult.isMenu,
+        confidence: validationResult.confidence,
+        reason: validationResult.reason,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
       const errorStack = error instanceof Error ? error.stack : ''
@@ -452,7 +523,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       }
       
-      console.error(`[Upload API] OCR processing FAILED:`, {
+      console.error(`[Upload API] Modal OCR processing FAILED:`, {
         error: errorMsg,
         errorType: error instanceof Error ? error.constructor.name : 'Unknown',
         method: 'base64',
@@ -775,7 +846,19 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
 
-    return NextResponse.json({
+    console.log(`[Upload API] Preparing final response:`, {
+      imageId: menuImageId,
+      success: true,
+      hasMenuImage: !!menuImageData,
+      hasOcrData: !!ocrData,
+      status: finalStatus,
+      ocrProcessed: ocrProcessingSucceeded,
+      hasMenuValidation: !!menuValidationResult,
+      requestId,
+      timestamp: new Date().toISOString()
+    })
+
+    const response = {
       success: true,
       menuImage: menuImageData,
       ocrResult: ocrData,
@@ -785,8 +868,23 @@ export async function POST(request: NextRequest) {
         error: ocrProcessingSucceeded ? null : ocrErrorDetails,
         resultId: ocrResultId,
         processingTime: ocrResult?.ProcessingTimeInMilliseconds || null
-      }
+      },
+      menuValidation: menuValidationResult ? {
+        isMenu: menuValidationResult.isMenu,
+        confidence: menuValidationResult.confidence,
+        reason: menuValidationResult.reason
+      } : null
+    }
+
+    console.log(`[Upload API] Sending response to client:`, {
+      imageId: menuImageId,
+      responseKeys: Object.keys(response),
+      menuValidation: response.menuValidation,
+      requestId,
+      timestamp: new Date().toISOString()
     })
+
+    return NextResponse.json(response)
   } catch (error) {
     return handleAPIError(error)
   }

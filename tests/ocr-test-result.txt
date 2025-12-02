@@ -1,0 +1,20 @@
+Modal OCR Test Result
+================================================================================
+
+Test Date: 2025-12-02T12:38:54.449Z
+Image: C:\Users\affan\Downloads\36bcd1c5-42b3-4aea-9fc2-4b051e98ab50.jpeg
+Endpoint: https://magadumpramod420--deepseek-ocr-ocr-endpoint.modal.run/
+Mode: base
+Processing Time: 67171ms
+
+OCR Configuration:
+{
+  "base_size": 1024,
+  "image_size": 1024,
+  "crop_mode": false
+}
+
+Extracted Text:
+────────────────────────────────────────────────────────────────────────────────
+No OCR result generated
+────────────────────────────────────────────────────────────────────────────────

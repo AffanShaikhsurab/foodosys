@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import MenuUpload from '@/components/MenuUpload'
-import { getCurrentUser } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import type { Restaurant } from '@/lib/types'
 import { useLocation } from '@/hooks/useLocation'
 import { useDistance } from '@/hooks/useDistance'
+import { useUser } from '@clerk/nextjs'
 
 export default function UploadPage() {
   const router = useRouter()
@@ -23,11 +23,11 @@ export default function UploadPage() {
   const { location, requestLocation, isLoading: isLocationLoading } = useLocation()
   const { calculateDistance } = useDistance()
   const [nearestRestaurant, setNearestRestaurant] = useState<Restaurant | null>(null)
+  const { user } = useUser()
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const user = await getCurrentUser()
         if (!user) {
           router.push('/auth?redirectTo=/upload')
           return
@@ -49,7 +49,7 @@ export default function UploadPage() {
     }
 
     checkAuth()
-  }, [router])
+  }, [router, user])
 
   // Check for nearest restaurant when location and restaurants are available
   useEffect(() => {
