@@ -111,7 +111,7 @@ export async function GET(
     if (data && data.length > 0) {
       console.log(`[Menus API] ${requestId} Fetching contributor information for ${data.length} images`)
       
-      const uploaderIds = [...new Set(data.map((menu: any) => menu.uploaded_by).filter(Boolean))]
+      const uploaderIds = Array.from(new Set(data.map((menu: any) => menu.uploaded_by).filter(Boolean)))
       
       if (uploaderIds.length > 0) {
         const { data: contributors, error: contributorsError } = await (await createServerClient())
