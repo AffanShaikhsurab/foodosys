@@ -8,7 +8,9 @@ export default function TestAutoCropUpload() {
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const { getToken } = useClerk()
+  // `getToken` isn't present on the narrow LoadedClerk type in some Clerk versions.
+  // Cast to `any` for this test component to avoid build-time type errors.
+  const { getToken } = useClerk() as any
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

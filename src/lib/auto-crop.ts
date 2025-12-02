@@ -226,7 +226,8 @@ export async function perspectiveCropImage(buffer: Buffer, mimeType: string): Pr
 }
 
 // Helper function to order corners (top-left, top-right, bottom-right, bottom-left)
-function orderCorners(corners: cv.Point[]): cv.Point[] {
+// Use `any` for corner types because OpenCV.js types aren't available at build-time.
+function orderCorners(corners: any[]): any[] {
   // Calculate center point
   const center = {
     x: corners.reduce((sum, p) => sum + p.x, 0) / 4,
