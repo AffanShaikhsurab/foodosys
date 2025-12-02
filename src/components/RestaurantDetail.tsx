@@ -349,6 +349,28 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                           </div>
                         </div>
 
+                        {/* Contributor Attribution */}
+                        {menu.contributor && (
+                          <div className="contributor-info">
+                            <div className="contributor-avatar">
+                              {menu.contributor.avatar_url ? (
+                                <img 
+                                  src={menu.contributor.avatar_url} 
+                                  alt={menu.contributor.display_name}
+                                />
+                              ) : (
+                                <div className="avatar-placeholder">
+                                  {menu.contributor.display_name?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="contributor-details">
+                              <span className="contributor-label">Contributed by</span>
+                              <span className="contributor-name">{menu.contributor.display_name || 'Anonymous'}</span>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="ocr-content">
                           {showOCR[menu.id] && menu.ocr_results ? (
                             <div className="ocr-text-block">
@@ -615,6 +637,60 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
           align-items: center;
           gap: 4px;
           backdrop-filter: blur(4px);
+        }
+
+        .contributor-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 16px;
+          background: #F9F9F9;
+          border-radius: 12px;
+          margin: 8px 8px 0 8px;
+        }
+
+        .contributor-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .contributor-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .avatar-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--accent-lime);
+          color: var(--primary-dark);
+          font-weight: 700;
+          font-size: 14px;
+        }
+
+        .contributor-details {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .contributor-label {
+          font-size: 11px;
+          color: var(--text-muted);
+          font-weight: 500;
+        }
+
+        .contributor-name {
+          font-size: 13px;
+          color: var(--primary-dark);
+          font-weight: 600;
         }
 
         .ocr-content {

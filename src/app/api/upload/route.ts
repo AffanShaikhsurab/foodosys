@@ -1075,11 +1075,56 @@ export async function POST(request: NextRequest) {
       throw new DatabaseError('Failed to update menu image status', updateError)
     }
 
+    // Create daily contribution record to track user contribution and award karma
+    console.log(`[Upload API] Creating daily contribution record:`, {
+      userId,
+      restaurantId,
+      menuImageId,
+      requestId,
+      timestamp: new Date().toISOString()
+    })
+
+    const { data: contributionData, error: contributionError } = await supabaseAdmin
+      .from('daily_contributions')
+      .insert([{
+        user_id: userId,
+        restaurant_id: restaurantId,
+        menu_image_id: menuImageId,
+        contribution_type: 'upload',
+        contribution_date: new Date().toISOString().split('T')[0],
+        points_earned: 10 // Upload contribution earns 10 points
+      }])
+      .select()
+      .single()
+
+    if (contributionError) {
+      console.error(`[Upload API] Failed to create contribution record:`, {
+        error: contributionError.message,
+        errorDetails: (contributionError as any)?.details,
+        userId,
+        restaurantId,
+        menuImageId,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
+      // Don't throw error - contribution tracking is non-critical for upload success
+      // The trigger should handle karma awarding, but we log the error for monitoring
+    } else {
+      console.log(`[Upload API] Contribution record created successfully:`, {
+        contributionId: (contributionData as any)?.id,
+        userId,
+        pointsEarned: 10,
+        requestId,
+        timestamp: new Date().toISOString()
+      })
+    }
+
     console.log(`[Upload API] Upload completed successfully:`, {
       menuImageId,
       ocrResultId: ocrResultId || 'No OCR result',
       finalStatus,
       ocrProcessingSucceeded,
+      contributionCreated: !contributionError,
       totalDuration: Date.now() - startTime + 'ms',
       requestId,
       timestamp: new Date().toISOString()

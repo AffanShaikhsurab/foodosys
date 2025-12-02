@@ -21,6 +21,11 @@ export interface MenuImage {
   ocr_result_id?: string
   photo_taken_at?: string | null
   created_at: string
+  contributor?: {
+    user_id: string
+    display_name: string
+    avatar_url?: string
+  }
 }
 
 export interface OCRResult {

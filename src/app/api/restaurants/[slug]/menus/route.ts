@@ -69,6 +69,7 @@ export async function GET(
         mime,
         status,
         created_at,
+        uploaded_by,
         ocr_results!ocr_results_image_id_fkey(*),
         menus!menus_menu_image_id_fkey(
           id,
@@ -104,6 +105,40 @@ export async function GET(
         restaurantId
       })
       throw new DatabaseError('Failed to fetch menus', error)
+    }
+
+    // Fetch contributor information for each menu image
+    if (data && data.length > 0) {
+      console.log(`[Menus API] ${requestId} Fetching contributor information for ${data.length} images`)
+      
+      const uploaderIds = [...new Set(data.map((menu: any) => menu.uploaded_by).filter(Boolean))]
+      
+      if (uploaderIds.length > 0) {
+        const { data: contributors, error: contributorsError } = await (await createServerClient())
+          .from('user_profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', uploaderIds)
+        
+        if (!contributorsError && contributors) {
+          // Map contributors to menu images
+          const contributorMap = new Map(
+            contributors.map((c: any) => [c.user_id, c])
+          )
+          
+          data.forEach((menu: any) => {
+            if (menu.uploaded_by) {
+              menu.contributor = contributorMap.get(menu.uploaded_by) || null
+            }
+          })
+          
+          console.log(`[Menus API] ${requestId} Contributors mapped successfully:`, {
+            contributorsFound: contributors.length,
+            imagesWithContributors: data.filter((m: any) => m.contributor).length
+          })
+        } else {
+          console.error(`[Menus API] ${requestId} Failed to fetch contributors:`, contributorsError)
+        }
+      }
     }
 
     // Log detailed info about returned menus
