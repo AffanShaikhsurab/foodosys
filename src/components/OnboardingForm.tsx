@@ -283,9 +283,9 @@ const OnboardingForm: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-body flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md bg-bg-card rounded-3xl shadow-2xl overflow-hidden">
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="px-6 py-8 pb-24">
+        <form onSubmit={handleSubmit} className="px-6 py-8">
           {/* Title Section */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-primary-dark leading-tight mb-2">
@@ -340,7 +340,7 @@ const OnboardingForm: React.FC = () => {
               value={formData.displayName}
               onChange={handleInputChange}
               placeholder="e.g. Rahul Kumar"
-              className={`w-full px-4.5 py-4.5 bg-white rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark ${
+              className={`w-full px-4.5 py-4.5 bg-bg-card rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark placeholder:text-text-muted ${
                 errors.displayName ? 'border-red-500 focus:ring-red-500/50' : ''
               }`}
             />
@@ -358,25 +358,25 @@ const OnboardingForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleRoleSelection('trainee')}
-                className={`px-5 py-3 bg-white rounded-3xl text-sm font-medium shadow-soft border-2 border-transparent transition-all duration-200 flex items-center gap-2 ${
+                className={`px-5 py-3 bg-bg-card rounded-3xl text-sm font-medium shadow-soft border-2 transition-all duration-200 flex items-center gap-2 ${
                   formData.role === 'trainee'
                     ? 'bg-accent-lime text-primary-dark border-accent-lime font-bold'
-                    : 'text-text-muted hover:border-accent-lime/50'
+                    : 'border-transparent text-text-muted hover:border-accent-lime/50'
                 }`}
               >
-                <i className="ri-user-star-line"></i>
+                <i className="ri-user-star-line text-base"></i>
                 Trainee
               </button>
               <button
                 type="button"
                 onClick={() => handleRoleSelection('employee')}
-                className={`px-5 py-3 bg-white rounded-3xl text-sm font-medium shadow-soft border-2 border-transparent transition-all duration-200 flex items-center gap-2 ${
+                className={`px-5 py-3 bg-bg-card rounded-3xl text-sm font-medium shadow-soft border-2 transition-all duration-200 flex items-center gap-2 ${
                   formData.role === 'employee'
                     ? 'bg-accent-lime text-primary-dark border-accent-lime font-bold'
-                    : 'text-text-muted hover:border-accent-lime/50'
+                    : 'border-transparent text-text-muted hover:border-accent-lime/50'
                 }`}
               >
-                <i className="ri-briefcase-4-line"></i>
+                <i className="ri-briefcase-4-line text-base"></i>
                 Employee
               </button>
             </div>
@@ -398,7 +398,7 @@ const OnboardingForm: React.FC = () => {
                 name="baseLocation"
                 value={formData.baseLocation}
                 onChange={handleInputChange}
-                className={`w-full px-4.5 py-4.5 bg-white rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark appearance-none cursor-pointer ${
+                className={`w-full px-4.5 py-4.5 bg-bg-card rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark appearance-none cursor-pointer ${
                   errors.baseLocation ? 'border-red-500 focus:ring-red-500/50' : ''
                 }`}
                 style={{
@@ -430,50 +430,54 @@ const OnboardingForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDietarySelection('vegetarian')}
-                className={`bg-white p-4 rounded-3xl text-center shadow-soft border-2 border-transparent transition-all duration-200 cursor-pointer ${
+                className={`bg-bg-card p-5 rounded-3xl text-center shadow-soft border-2 transition-all duration-200 cursor-pointer ${
                   formData.dietaryPreference === 'vegetarian'
-                    ? 'border-green-500 bg-green-50'
-                    : 'hover:border-accent-lime/50'
+                    ? 'border-accent-lime bg-accent-lime/10'
+                    : 'border-transparent hover:border-accent-lime/50'
                 }`}
               >
-                <span className="text-2xl mb-2 block">🥗</span>
-                <span className="font-semibold text-sm text-primary-dark">Vegetarian</span>
+                <span className="text-3xl mb-2 block">🥗</span>
+                <span className={`font-semibold text-sm block ${
+                  formData.dietaryPreference === 'vegetarian' ? 'text-primary-dark font-bold' : 'text-text-muted'
+                }`}>Vegetarian</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleDietarySelection('non-veg')}
-                className={`bg-white p-4 rounded-3xl text-center shadow-soft border-2 border-transparent transition-all duration-200 cursor-pointer ${
+                className={`bg-bg-card p-5 rounded-3xl text-center shadow-soft border-2 transition-all duration-200 cursor-pointer ${
                   formData.dietaryPreference === 'non-veg'
-                    ? 'border-green-500 bg-green-50'
-                    : 'hover:border-accent-lime/50'
+                    ? 'border-accent-lime bg-accent-lime/10'
+                    : 'border-transparent hover:border-accent-lime/50'
                 }`}
               >
-                <span className="text-2xl mb-2 block">🍗</span>
-                <span className="font-semibold text-sm text-primary-dark">Non-Veg</span>
+                <span className="text-3xl mb-2 block">🍗</span>
+                <span className={`font-semibold text-sm block ${
+                  formData.dietaryPreference === 'non-veg' ? 'text-primary-dark font-bold' : 'text-text-muted'
+                }`}>Non-Veg</span>
               </button>
             </div>
             {errors.dietaryPreference && (
               <p className="text-red-500 text-xs mt-1.5">{errors.dietaryPreference}</p>
             )}
           </div>
-        </form>
 
-        {/* Sticky Footer Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-body via-bg-body to-transparent">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95 ${
-              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {isSubmitting ? (
-              <>Saving...</>
-            ) : (
-              <>Let&apos;s Eat! <i className="ri-arrow-right-line"></i></>
-            )}
-          </button>
-        </div>
+          {/* Sticky Footer Button */}
+          <div className="mt-8">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95 ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {isSubmitting ? (
+                <>Saving...</>
+              ) : (
+                <>Let&apos;s Eat! <i className="ri-arrow-right-line"></i></>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
