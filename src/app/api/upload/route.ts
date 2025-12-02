@@ -7,6 +7,7 @@ import { ocrSpaceV2Service } from '@/lib/ocr-space-v2'
 import { combinedOCRService } from '@/lib/combined-ocr'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
+import { processImageWithAutoCrop } from '@/lib/auto-crop-server'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -219,6 +220,37 @@ export async function POST(request: NextRequest) {
         requestId 
       })
       throw new Error(`Failed to convert file: ${bufferError instanceof Error ? bufferError.message : 'Unknown error'}`)
+    }
+
+    // Apply auto-cropping to the image
+    console.log(`[Upload API] Starting auto-cropping process:`, { 
+      originalSize: buffer.length,
+      fileName: file.name,
+      requestId 
+    })
+
+    let croppedBuffer: Buffer
+    try {
+      // Process image with auto-cropping
+      croppedBuffer = await processImageWithAutoCrop(buffer, file.type)
+      
+      console.log(`[Upload API] Auto-cropping completed:`, { 
+        originalSize: buffer.length,
+        croppedSize: croppedBuffer.length,
+        sizeChange: croppedBuffer.length - buffer.length,
+        fileName: file.name,
+        requestId 
+      })
+      
+      // Use the cropped buffer for further processing
+      buffer = croppedBuffer
+    } catch (cropError) {
+      console.error(`[Upload API] Auto-cropping failed, using original image:`, { 
+        error: cropError instanceof Error ? cropError.message : String(cropError),
+        fileName: file.name,
+        requestId 
+      })
+      // Continue with original buffer if auto-cropping fails
     }
     
     // Create a timestamp-based filename
