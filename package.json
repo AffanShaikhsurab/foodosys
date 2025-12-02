@@ -27,6 +27,7 @@
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.35.7",
     "@vercel/analytics": "^1.5.0",
+    "canvas": "^3.2.0",
     "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
     "formidable": "^3.5.1",
@@ -37,6 +38,7 @@
     "react": "^18",
     "react-camera-pro": "^1.4.0",
     "react-dom": "^18",
+    "smartcrop": "^2.0.5",
     "styled-components": "^5.3.11",
     "svix": "^1.81.0"
   },
