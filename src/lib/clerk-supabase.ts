@@ -12,6 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /**
  * Creates a Supabase client with Clerk authentication for client-side usage
  * This function should be used in Client Components
+ * Uses the modern Clerk-Supabase integration without deprecated JWT templates
  * 
  * @param session - The Clerk session object (optional, will use current session if not provided)
  * @returns A SupabaseClient instance configured with Clerk authentication
@@ -38,15 +39,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export function createClientSupabaseClient(session?: any): SupabaseClient {
   return createClient(supabaseUrl, supabaseAnonKey, {
     async accessToken() {
-      if (session) {
-        return session.getToken() ?? null
-      }
-      // If no session provided, try to get the current session
-      // This works in client components where Clerk is initialized
       try {
+        if (session) {
+          // Use getToken() without template - modern approach
+          const token = await session.getToken()
+          return token ?? null
+        }
+        // If no session provided, try to get the current session
+        // This works in client components where Clerk is initialized
         const clerkSession = await (window as any).Clerk?.session?.getToken()
         return clerkSession ?? null
-      } catch {
+      } catch (error) {
+        console.error('[Clerk-Supabase] Error getting token:', error)
         return null
       }
     },
@@ -56,6 +60,7 @@ export function createClientSupabaseClient(session?: any): SupabaseClient {
 /**
  * React hook for creating a Supabase client with Clerk authentication
  * This is the recommended way to use Supabase in Client Components
+ * Uses the modern Clerk-Supabase integration without deprecated JWT templates
  * 
  * @returns A SupabaseClient instance configured with Clerk authentication
  * 
@@ -87,7 +92,15 @@ export function useClerkSupabaseClient(): SupabaseClient {
   
   return createClient(supabaseUrl, supabaseAnonKey, {
     async accessToken() {
-      return session?.getToken() ?? null
+      try {
+        // Get the Clerk session token without template - modern approach
+        // Clerk will automatically add the required claims for Supabase RLS
+        const token = await session?.getToken()
+        return token ?? null
+      } catch (error) {
+        console.error('[Clerk-Supabase] Error getting token:', error)
+        return null
+      }
     },
   })
 }

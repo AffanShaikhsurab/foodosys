@@ -4,11 +4,11 @@ require('dotenv').config({ path: '.env.local' })
 
 async function testMenuUpload() {
   try {
-    console.log('Testing menu upload and analysis with Gemini Flash model...')
+    console.log('Testing menu upload and analysis with Groq model...')
     
     // Check if API key is configured
-    if (!process.env.GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not configured in .env.local')
+    if (!process.env.GROQ_API_KEY) {
+      console.error('GROQ_API_KEY is not configured in .env.local')
       process.exit(1)
     }
     

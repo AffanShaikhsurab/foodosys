@@ -40,10 +40,20 @@ export default clerkMiddleware(async (auth, req) => {
     // Check if user has completed onboarding (only for authenticated users on protected routes)
     if (userId && isProtectedRoute(req) && !isPublicRoute(req)) {
         try {
-            // Create Supabase client
+            // Get Clerk session token without template - modern approach
+            const { getToken } = await auth();
+            const token = await getToken();
+            
+            // Create authenticated Supabase client with Clerk token
             const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
             const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-            const supabase = createClient(supabaseUrl, supabaseKey);
+            const supabase = createClient(supabaseUrl, supabaseKey, {
+                global: {
+                    headers: token ? {
+                        Authorization: `Bearer ${token}`
+                    } : {}
+                }
+            });
 
             // Check if user profile exists
             const { data: profile, error } = await supabase

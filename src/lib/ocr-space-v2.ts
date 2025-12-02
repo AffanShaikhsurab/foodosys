@@ -248,11 +248,11 @@ class OcrSpaceV2Service {
   }
 
   /**
-   * Validate if OCR text represents a menu using Gemini
+   * Validate if OCR text represents a menu using Groq
    */
   async validateMenu(ocrText: string): Promise<MenuValidationResult> {
     const requestId = Math.random().toString(36).substring(7);
-    console.log(`[OcrSpaceV2Service] Starting menu validation with Gemini:`, {
+    console.log(`[OcrSpaceV2Service] Starting menu validation with Groq:`, {
       requestId,
       textLength: ocrText.length,
       textPreview: ocrText.substring(0, 100),
@@ -260,26 +260,25 @@ class OcrSpaceV2Service {
     });
 
     try {
-      // Import GoogleGenerativeAI dynamically to avoid SSR issues
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      // Import Groq dynamically to avoid SSR issues
+      const { default: Groq } = await import('groq-sdk');
       
-      if (!process.env.GEMINI_API_KEY) {
-        console.error(`[OcrSpaceV2Service] GEMINI_API_KEY is not configured:`, {
+      if (!process.env.GROQ_API_KEY) {
+        console.error(`[OcrSpaceV2Service] GROQ_API_KEY is not configured:`, {
           requestId,
           timestamp: new Date().toISOString()
         });
-        throw new Error('GEMINI_API_KEY is not configured');
+        throw new Error('GROQ_API_KEY is not configured');
       }
 
-      console.log(`[OcrSpaceV2Service] Initializing Gemini API:`, {
+      console.log(`[OcrSpaceV2Service] Initializing Groq API:`, {
         requestId,
-        hasApiKey: !!process.env.GEMINI_API_KEY,
-        apiKeyPrefix: process.env.GEMINI_API_KEY?.substring(0, 8) + '...',
+        hasApiKey: !!process.env.GROQ_API_KEY,
+        apiKeyPrefix: process.env.GROQ_API_KEY?.substring(0, 8) + '...',
         timestamp: new Date().toISOString()
       });
 
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
       const prompt = `
         Analyze the following text and determine if it represents a restaurant menu.
@@ -306,17 +305,32 @@ class OcrSpaceV2Service {
         Return valid JSON only, no additional text.
       `;
 
-      console.log(`[OcrSpaceV2Service] Sending request to Gemini API:`, {
+      console.log(`[OcrSpaceV2Service] Sending request to Groq API:`, {
         requestId,
         promptLength: prompt.length,
         timestamp: new Date().toISOString()
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that analyzes text to determine if it represents a restaurant menu. Always respond with valid JSON only."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        model: "openai/gpt-oss-120b",
+        temperature: 0.5,
+        max_tokens: 1024,
+        response_format: { type: "json_object" }
+      });
+
+      const text = completion.choices[0]?.message?.content || '';
       
-      console.log(`[OcrSpaceV2Service] Received response from Gemini:`, {
+      console.log(`[OcrSpaceV2Service] Received response from Groq:`, {
         requestId,
         responseLength: text.length,
         responsePreview: text.substring(0, 200),
@@ -348,19 +362,22 @@ class OcrSpaceV2Service {
         reason: validationResult.reason || ''
       };
     } catch (error) {
-      console.error(`[OcrSpaceV2Service] Error validating menu with Gemini:`, {
+      console.error(`[OcrSpaceV2Service] Error validating menu with Groq:`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString()
       });
-      
-      // Return a default result in case of error
-      return {
-        isMenu: false,
-        confidence: 0,
-        reason: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
+
+      const fallback = this.validateMenuLocally(ocrText)
+      console.log(`[OcrSpaceV2Service] Using local heuristic validation fallback:`, {
+        requestId,
+        isMenu: fallback.isMenu,
+        confidence: fallback.confidence,
+        reason: fallback.reason,
+        timestamp: new Date().toISOString()
+      })
+      return fallback
     }
   }
 
@@ -425,6 +442,30 @@ class OcrSpaceV2Service {
       });
       throw error;
     }
+  }
+
+  validateMenuLocally(ocrText: string): MenuValidationResult {
+    const text = (ocrText || '').toLowerCase()
+    const priceRegex = /(₹|rs\.?|inr|\$)\s*\d{1,4}(?:[\.,]\d{1,2})?/g
+    const plainPriceRegex = /\b\d{2,4}(?:[\.,]\d{1,2})?\b/g
+    const sectionRegex = /(breakfast|lunch|dinner|snacks|beverages|drinks|starters|main course|desserts|veg|non-veg|specials)/g
+    const lineItemRegex = /^.{2,60}?\s+(₹|rs\.?|inr|\$)?\s*\d{1,4}(?:[\.,]\d{1,2})?$/gm
+
+    const priceHits = (text.match(priceRegex) || []).length
+    const plainPriceHits = (text.match(plainPriceRegex) || []).length
+    const sectionHits = (text.match(sectionRegex) || []).length
+    const lineItemHits = (text.match(lineItemRegex) || []).length
+
+    // Basic scoring
+    const priceScore = Math.min(1, (priceHits + plainPriceHits * 0.5) / 10)
+    const sectionScore = Math.min(1, sectionHits / 5)
+    const lineScore = Math.min(1, lineItemHits / 10)
+
+    const confidence = Math.max(0, Math.min(1, 0.5 * priceScore + 0.3 * sectionScore + 0.2 * lineScore))
+    const isMenu = confidence >= 0.5
+    const reason = `Heuristic: prices=${priceHits + plainPriceHits}, sections=${sectionHits}, lines=${lineItemHits}`
+
+    return { isMenu, confidence, reason }
   }
 
   /**

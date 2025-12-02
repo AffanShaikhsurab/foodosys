@@ -17,8 +17,16 @@ export async function createServerClient() {
   
   return createClient(supabaseUrl, supabaseAnonKey, {
     async accessToken() {
-      const { getToken } = await auth()
-      return await getToken()
+      try {
+        const { getToken } = await auth()
+        // Get the Clerk session token without template - modern approach
+        // Clerk will automatically add the required claims for Supabase RLS
+        const token = await getToken()
+        return token ?? null
+      } catch (error) {
+        console.error('[Supabase Server Client] Error getting token:', error)
+        return null
+      }
     },
   })
 }

@@ -1,13 +1,12 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import { validateMenuStructure, MenuStructure } from './menu-validation'
 
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+// Initialize Groq API
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 
 export class MenuAnalyzer {
   /**
-   * Analyze menu from image using Gemini Flash model
+   * Analyze menu from image using Groq model
    */
   async analyzeMenuFromImage(base64Image: string): Promise<MenuStructure> {
     try {
@@ -39,16 +38,35 @@ export class MenuAnalyzer {
         6. Return valid JSON only, no additional text
       `
 
-      const imagePart = {
-        inlineData: {
-          data: base64Image.split(',')[1], // Remove the data:image/...;base64, prefix
-          mimeType: base64Image.split(';')[0].split(':')[1]
-        }
-      }
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that analyzes menu images and extracts menu items in structured JSON format. Always respond with valid JSON only."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: prompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        model: "openai/gpt-oss-120b",
+        temperature: 0.5,
+        max_tokens: 4096,
+        response_format: { type: "json_object" }
+      });
 
-      const result = await model.generateContent([prompt, imagePart])
-      const response = await result.response
-      const text = response.text()
+      const text = completion.choices[0]?.message?.content || '';
       
       // Clean and parse the JSON response
       const cleanedText = this.cleanJsonResponse(text)
@@ -63,7 +81,7 @@ export class MenuAnalyzer {
   }
 
   /**
-   * Analyze menu from OCR text using Gemini Flash model
+   * Analyze menu from OCR text using Groq model
    */
   async analyzeMenuFromText(ocrText: string): Promise<MenuStructure> {
     try {
@@ -98,9 +116,24 @@ export class MenuAnalyzer {
         6. Return valid JSON only, no additional text
       `
 
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that analyzes menu text and extracts menu items in structured JSON format. Always respond with valid JSON only."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        model: "openai/gpt-oss-120b",
+        temperature: 0.5,
+        max_tokens: 4096,
+        response_format: { type: "json_object" }
+      });
+
+      const text = completion.choices[0]?.message?.content || '';
       
       // Clean and parse the JSON response
       const cleanedText = this.cleanJsonResponse(text)
@@ -115,7 +148,7 @@ export class MenuAnalyzer {
   }
 
   /**
-   * Clean the JSON response from Gemini to remove any extra text
+   * Clean the JSON response from Groq to remove any extra text
    */
   private cleanJsonResponse(text: string): string {
     // Remove any markdown code blocks

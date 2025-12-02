@@ -332,7 +332,7 @@ const OnboardingForm: React.FC = () => {
           {/* Display Name Input */}
           <div className="mb-6">
             <label className="block text-xs font-bold text-primary-dark uppercase tracking-wide mb-2.5">
-              What's Your Name?
+              What&apos;s Your Name?
             </label>
             <input
               type="text"

@@ -30,6 +30,7 @@
     "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
     "formidable": "^3.5.1",
+    "groq-sdk": "^0.37.0",
     "lottie-react": "^2.4.1",
     "next": "14.2.25",
     "ocr-space-api-wrapper": "^2.4.2",

@@ -4,6 +4,7 @@ import { createServerClient, supabaseAdmin } from '@/lib/supabase'
 import { ocrService } from '@/lib/ocr'
 import { menuAnalyzer } from '@/lib/menu-analyzer'
 import { ocrSpaceV2Service } from '@/lib/ocr-space-v2'
+import { combinedOCRService } from '@/lib/combined-ocr'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
 
@@ -330,11 +331,21 @@ export async function POST(request: NextRequest) {
       requestId 
     })
 
-    // Create menu image record
+    const isUuid = (val: string | null) => !!val && /^[0-9a-fA-F-]{36}$/.test(val)
+    const uploadPayload: any = {
+      restaurant_id: restaurantId,
+      storage_path: filePath,
+      mime: file.type,
+      status: 'ocr_pending'
+    }
+    if (isUuid(userId)) {
+      uploadPayload.uploaded_by = userId
+    }
+
     console.log(`[Upload API] Creating menu image record in database:`, { 
       restaurant_id: restaurantId, 
       storage_path: filePath,
-      uploaded_by: userId,
+      uploaded_by_uuid: isUuid(userId) ? userId : null,
       mime: file.type,
       status: 'ocr_pending',
       requestId,
@@ -343,13 +354,7 @@ export async function POST(request: NextRequest) {
     
     const { data: menuImageData, error: menuImageError } = await supabaseAdmin
       .from('menu_images')
-      .insert([{
-        restaurant_id: restaurantId,
-        storage_path: filePath,
-        mime: file.type,
-        status: 'ocr_pending',
-        uploaded_by: userId
-      }])
+      .insert([uploadPayload])
       .select()
       .single()
 
@@ -359,7 +364,7 @@ export async function POST(request: NextRequest) {
       menuImageErrorDetails: (menuImageError as any)?.details,
       menuImageId: (menuImageData as any)?.id,
       menuImageRestaurantId: (menuImageData as any)?.restaurant_id,
-      menuImageStoragePath: (menuImageData as any)?.storage_path,
+      menuImagefilePath: (menuImageData as any)?.storage_path,
       requestId,
       timestamp: new Date().toISOString()
     })
@@ -409,8 +414,8 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      // Process image with OCR.space API v2 and validate if it's a menu
-      console.log(`[Upload API] Step 1: Starting OCR.space API v2 and menu validation:`, {
+      // Process image with both OCR services (OCR.space + Maverick) and validate if it's a menu
+      console.log(`[Upload API] Step 1: Starting dual OCR processing (OCR.space + Maverick) and menu validation:`, {
         imageId: menuImageId,
         base64Length: base64Image.length,
         mimeType: file.type,
@@ -418,16 +423,20 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      const { ocrResult: v2OcrResult, validationResult } = await ocrSpaceV2Service.processAndValidateMenu(base64Image)
+      const { combinedResult, validationResult } = await combinedOCRService.processAndValidateMenu(base64Image)
       
-      console.log(`[Upload API] Step 1 completed: OCR.space API v2 Service response received:`, {
+      console.log(`[Upload API] Step 1 completed: Dual OCR processing response received:`, {
         imageId: menuImageId,
-        hasResponse: !!v2OcrResult,
-        textLength: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.length || 0,
-        textPreview: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.substring(0, 100),
+        hasCombinedResult: !!combinedResult,
+        finalTextLength: combinedResult.finalText?.length || 0,
+        finalTextPreview: combinedResult.finalText?.substring(0, 100),
+        confidence: combinedResult.confidence,
+        processingDetails: combinedResult.processingDetails,
         requestId,
         timestamp: new Date().toISOString()
       })
+      
+      
       
       console.log(`[Upload API] Step 1 completed: Menu validation result:`, {
         imageId: menuImageId,
@@ -449,9 +458,9 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       if (!validationResult.isMenu || validationResult.confidence < confidenceThreshold) {
-        console.warn(`[Upload API] Step 2 failed: Image is not a valid menu:`, {
+        console.warn(`[Upload API] Step 2 did not pass threshold; applying local fallback`, {
           imageId: menuImageId,
           isMenu: validationResult.isMenu,
           confidence: validationResult.confidence,
@@ -460,44 +469,170 @@ export async function POST(request: NextRequest) {
           requestId,
           timestamp: new Date().toISOString()
         })
-        
-        // Return error response for non-menu images
-        return NextResponse.json(
-          { 
-            error: 'The uploaded image is not a valid menu',
-            details: validationResult.reason || 'The image does not appear to contain a restaurant menu',
-            confidence: validationResult.confidence,
-            isMenu: validationResult.isMenu,
-            threshold: confidenceThreshold,
+
+        const ocrTextFallback = combinedResult.finalText || ''
+        const localFallback = ocrSpaceV2Service.validateMenuLocally(ocrTextFallback)
+
+        console.log(`[Upload API] Local fallback validation result:`, {
+          imageId: menuImageId,
+          isMenu: localFallback.isMenu,
+          confidence: localFallback.confidence,
+          reason: localFallback.reason,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+
+        // Use the better of the two results for reporting
+        menuValidationResult = (localFallback.confidence > (validationResult.confidence || 0))
+          ? localFallback
+          : validationResult
+
+        // Check if even the local fallback passes validation
+        if (!menuValidationResult.isMenu || menuValidationResult.confidence < confidenceThreshold) {
+          console.error(`[Upload API] Image rejected: Not identified as a menu after both validations`, {
             imageId: menuImageId,
-            requestId
-          },
-          { status: 400 }
-        )
+            aiValidation: {
+              isMenu: validationResult.isMenu,
+              confidence: validationResult.confidence,
+              reason: validationResult.reason
+            },
+            localValidation: {
+              isMenu: localFallback.isMenu,
+              confidence: localFallback.confidence,
+              reason: localFallback.reason
+            },
+            selectedValidation: menuValidationResult,
+            threshold: confidenceThreshold,
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+
+          // Delete the uploaded image from storage since it's not a menu
+          try {
+            console.log(`[Upload API] Deleting non-menu image from storage:`, {
+              imageId: menuImageId,
+              filePath: filePath,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+
+            const { error: deleteError } = await supabaseAdmin.storage
+              .from('menu-images')
+              .remove([filePath])
+
+            if (deleteError) {
+              console.error(`[Upload API] Failed to delete non-menu image from storage:`, {
+                error: deleteError.message,
+                imageId: menuImageId,
+                filePath,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            } else {
+              console.log(`[Upload API] Successfully deleted non-menu image from storage:`, {
+                imageId: menuImageId,
+                filePath,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            }
+          } catch (deleteError) {
+            console.error(`[Upload API] Error while deleting non-menu image from storage:`, {
+              error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+              imageId: menuImageId,
+              filePath,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+          }
+
+          // Delete the database record
+          try {
+            console.log(`[Upload API] Deleting non-menu image record from database:`, {
+              imageId: menuImageId,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+
+            const { error: dbDeleteError } = await supabaseAdmin
+              .from('menu_images')
+              .delete()
+              .eq('id', menuImageId)
+
+            if (dbDeleteError) {
+              console.error(`[Upload API] Failed to delete non-menu image record from database:`, {
+                error: dbDeleteError.message,
+                imageId: menuImageId,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            } else {
+              console.log(`[Upload API] Successfully deleted non-menu image record from database:`, {
+                imageId: menuImageId,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            }
+          } catch (dbDeleteError) {
+            console.error(`[Upload API] Error while deleting non-menu image record from database:`, {
+              error: dbDeleteError instanceof Error ? dbDeleteError.message : String(dbDeleteError),
+              imageId: menuImageId,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+          }
+
+          // Return an error response to the client
+          return NextResponse.json({
+            success: false,
+            error: 'The uploaded image does not appear to be a restaurant menu. Please upload a clear photo of a menu.',
+            validation: {
+              isMenu: menuValidationResult.isMenu,
+              confidence: menuValidationResult.confidence,
+              reason: menuValidationResult.reason,
+              threshold: confidenceThreshold
+            }
+          }, { status: 400 })
+        }
+
+        console.log(`[Upload API] Local fallback validation passed; proceeding with upload`, {
+          imageId: menuImageId,
+          selectedValidation: menuValidationResult,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+      } else {
+        console.log(`[Upload API] Step 2 passed: Image validated as a menu:`, {
+          imageId: menuImageId,
+          isMenu: validationResult.isMenu,
+          confidence: validationResult.confidence,
+          reason: validationResult.reason,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+        menuValidationResult = validationResult
       }
-      
-      console.log(`[Upload API] Step 2 passed: Image validated as a menu:`, {
-        imageId: menuImageId,
-        isMenu: validationResult.isMenu,
-        confidence: validationResult.confidence,
-        reason: validationResult.reason,
-        requestId,
-        timestamp: new Date().toISOString()
-      })
-      
-      // Use OCR.space API v2 result directly (already in the expected format)
-      ocrResult = v2OcrResult
-      
+      // Use combined OCR result (create a compatible format for the database)
+      ocrResult = {
+        ParsedResults: [{
+          ParsedText: combinedResult.finalText,
+          TextOverlay: {
+            Lines: [] // We don't have detailed text overlay from combined OCR
+          }
+        }],
+        ProcessingTimeInMilliseconds: combinedResult.processingDetails.totalTime
+      }
       ocrProcessingSucceeded = true
-      menuValidationResult = validationResult
       
-      console.log(`[Upload API] OCR and menu validation completed successfully:`, {
+      console.log(`[Upload API] Dual OCR and menu validation completed successfully:`, {
         imageId: menuImageId,
         success: true,
-        textLength: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.length || 0,
-        textPreview: v2OcrResult?.ParsedResults?.[0]?.ParsedText?.substring(0, 100),
+        textLength: combinedResult.finalText?.length || 0,
+        textPreview: combinedResult.finalText?.substring(0, 100),
+        ocrConfidence: combinedResult.confidence,
+        processingDetails: combinedResult.processingDetails,
         isMenu: validationResult.isMenu,
-        confidence: validationResult.confidence,
+        menuConfidence: validationResult.confidence,
         reason: validationResult.reason,
         requestId,
         timestamp: new Date().toISOString()
@@ -526,12 +661,94 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      console.log(`[Upload API] Continuing without OCR - image will be stored as ocr_pending`, {
+      console.log(`[Upload API] OCR processing failed - rejecting image since we cannot validate if it's a menu`, {
         imageId: menuImageId,
         requestId,
         reason: errorMsg,
         timestamp: new Date().toISOString()
       })
+
+      // Delete the uploaded image from storage since OCR failed
+      try {
+        console.log(`[Upload API] Deleting image with failed OCR from storage:`, {
+          imageId: menuImageId,
+          filePath: filePath,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+
+        const { error: deleteError } = await supabaseAdmin.storage
+          .from('menu-images')
+          .remove([filePath])
+
+        if (deleteError) {
+          console.error(`[Upload API] Failed to delete image with failed OCR from storage:`, {
+            error: deleteError.message,
+            imageId: menuImageId,
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+        } else {
+          console.log(`[Upload API] Successfully deleted image with failed OCR from storage:`, {
+            imageId: menuImageId,
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+        }
+      } catch (deleteError) {
+        console.error(`[Upload API] Error while deleting image with failed OCR from storage:`, {
+          error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+          imageId: menuImageId,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      // Delete the database record
+      try {
+        console.log(`[Upload API] Deleting image with failed OCR from database:`, {
+          imageId: menuImageId,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+
+        const { error: dbDeleteError } = await supabaseAdmin
+          .from('menu_images')
+          .delete()
+          .eq('id', menuImageId)
+
+        if (dbDeleteError) {
+          console.error(`[Upload API] Failed to delete image with failed OCR from database:`, {
+            error: dbDeleteError.message,
+            imageId: menuImageId,
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+        } else {
+          console.log(`[Upload API] Successfully deleted image with failed OCR from database:`, {
+            imageId: menuImageId,
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+        }
+      } catch (dbDeleteError) {
+        console.error(`[Upload API] Error while deleting image with failed OCR from database:`, {
+          error: dbDeleteError instanceof Error ? dbDeleteError.message : String(dbDeleteError),
+          imageId: menuImageId,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      // Return an error response to the client
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to process the image. Please ensure you are uploading a clear, well-lit photo of a menu.',
+        ocrError: {
+          message: errorMsg,
+          type: error instanceof Error ? error.constructor.name : 'Unknown'
+        }
+      }, { status: 400 })
     }
 
     // Only save OCR result if OCR was successful
@@ -556,7 +773,7 @@ export async function POST(request: NextRequest) {
         text: ocrResult.ParsedResults?.[0]?.ParsedText || '',
         words: ocrResult.ParsedResults?.[0]?.TextOverlay?.Lines || [],
         language: 'eng',
-        ocr_engine: 3,
+        ocr_engine: 4, // Using 4 to indicate dual OCR processing (OCR.space + Maverick)
         processing_time_ms: ocrResult.ProcessingTimeInMilliseconds || 0
       }
       
@@ -612,8 +829,8 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString()
         })
 
-        // Now analyze the menu using Gemini Flash model
-        console.log(`[Upload API] Starting menu analysis with Gemini:`, {
+        // Now analyze the menu using Groq model
+        console.log(`[Upload API] Starting menu analysis with Groq:`, {
           imageId: menuImageId,
           ocrResultId,
           requestId,

@@ -25,7 +25,14 @@ console.log('[Supabase Browser] Client configured')
 export function createClerkSupabaseClient(session: any) {
     return createClient(supabaseUrl, supabaseAnonKey, {
         async accessToken() {
-            return session?.getToken() ?? null
+            try {
+                // Use getToken() without template - modern approach
+                const token = await session?.getToken()
+                return token ?? null
+            } catch (error) {
+                console.error('[Supabase Browser] Error getting token:', error)
+                return null
+            }
         },
     })
 }
@@ -36,7 +43,14 @@ export function useClerkSupabaseClient() {
     
     return createClient(supabaseUrl, supabaseAnonKey, {
         async accessToken() {
-            return session?.getToken() ?? null
+            try {
+                // Use getToken() without template - modern approach
+                const token = await session?.getToken()
+                return token ?? null
+            } catch (error) {
+                console.error('[Supabase Browser] Error getting token:', error)
+                return null
+            }
         },
     })
 }
