@@ -11,14 +11,14 @@ import { logUpload, logger } from '@/lib/logger'
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   const requestId = Math.random().toString(36).substring(7)
-  
+
   // Debug: Check if OCR API key is available
-  console.log(`[Upload API] OCR API Key check:`, { 
+  console.log(`[Upload API] OCR API Key check:`, {
     hasOcrKey: !!process.env.OCRSPACE_API_KEY,
     ocrKeyValue: process.env.OCRSPACE_API_KEY?.substring(0, 8) + '...',
     requestId
   })
-  
+
   logUpload('Upload API request received', {
     operation: 'api_request_start',
     requestId,
@@ -27,41 +27,41 @@ export async function POST(request: NextRequest) {
     userAgent: request.headers.get('user-agent'),
     contentType: request.headers.get('content-type')
   })
-  
+
   try {
     // Check if this is an anonymous upload request
     const isAnonymousUpload = request.headers.get('x-anonymous-upload') === 'true'
-    
+
     logUpload('Upload type determined', {
       operation: 'upload_type_determined',
       requestId,
       isAnonymous: isAnonymousUpload
     })
-    
+
     let userId: string | null = null
-    
+
     if (!isAnonymousUpload) {
       // Verify authentication using Clerk (only for authenticated uploads)
       const authHeader = request.headers.get('authorization')
       const token = authHeader?.replace('Bearer ', '')
-      
+
       logUpload('Authentication verification started', {
         operation: 'auth_verification_start',
         requestId,
         hasAuthHeader: !!authHeader,
         hasToken: !!token
       })
-      
+
       if (token) {
         // Verify Clerk JWT token
         try {
           // Import Clerk's verifyToken function
           const { verifyToken } = await import('@clerk/backend')
-          
+
           const payload = await verifyToken(token, {
             jwtKey: process.env.CLERK_SECRET_KEY,
           })
-          
+
           if (payload && payload.sub) {
             userId = payload.sub
             logUpload('Clerk JWT token verification successful', {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
             requestId,
             error: error instanceof Error ? error.message : String(error)
           })
-          
+
           return NextResponse.json(
             { error: 'Invalid or expired authentication token' },
             { status: 401 }
@@ -89,9 +89,9 @@ export async function POST(request: NextRequest) {
         try {
           // Import Clerk's auth function for server-side
           const { auth } = await import('@clerk/nextjs/server')
-          
+
           const { userId: clerkUserId } = await auth()
-          
+
           if (clerkUserId) {
             userId = clerkUserId
             logUpload('Clerk session authentication successful', {
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
             requestId,
             error: error instanceof Error ? error.message : String(error)
           })
-          
+
           return NextResponse.json(
             { error: 'Authentication required. Please sign in to upload photos.' },
             { status: 401 }
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
           operation: 'no_auth_found',
           requestId
         })
-        
+
         return NextResponse.json(
           { error: 'Authentication required. Please sign in to upload photos.' },
           { status: 401 }
@@ -135,34 +135,34 @@ export async function POST(request: NextRequest) {
     }
     // Check if this is a JSON request (base64 upload) or form data (file upload)
     const contentType = request.headers.get('content-type') || ''
-    
+
     let file: File | null = null
     let restaurantSlug: string | null = null
     let photoTakenAt: string | null = null
-    
+
     if (contentType.includes('application/json')) {
       // Handle base64 upload from camera
       const body = await request.json()
       const { base64, timestamp, fileName, restaurantSlug: slug } = body
-      
+
       if (!base64 || !slug) {
         throw new ValidationError('Missing base64 image data or restaurant slug')
       }
-      
+
       restaurantSlug = slug
       photoTakenAt = timestamp || new Date().toISOString()
-      
+
       // Convert base64 to File
       const arr = base64.split(',')
       const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg'
       const bstr = atob(arr[1])
       let n = bstr.length
       const u8arr = new Uint8Array(n)
-      
+
       while (n--) {
         u8arr[n] = bstr.charCodeAt(n)
       }
-      
+
       file = new File([u8arr], fileName || 'menu-photo.jpg', { type: mime })
     } else {
       // Handle traditional file upload
@@ -176,12 +176,12 @@ export async function POST(request: NextRequest) {
       throw new ValidationError('Missing file or restaurant slug')
     }
 
-    console.log(`[Upload API] File validation:`, { 
-      hasFile: !!file, 
-      fileName: file?.name, 
+    console.log(`[Upload API] File validation:`, {
+      hasFile: !!file,
+      fileName: file?.name,
       fileSize: file?.size,
       restaurantSlug,
-      requestId 
+      requestId
     })
 
     // Get restaurant by slug
@@ -192,11 +192,11 @@ export async function POST(request: NextRequest) {
       .eq('slug', restaurantSlug)
       .single()
 
-    console.log(`[Upload API] Restaurant lookup:`, { 
+    console.log(`[Upload API] Restaurant lookup:`, {
       restaurantError: restaurantError?.message,
       restaurantFound: !!restaurant,
       slug: restaurantSlug,
-      requestId 
+      requestId
     })
 
     if (restaurantError || !restaurant) {
@@ -214,51 +214,51 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert file to buffer
-    console.log(`[Upload API] Converting file to buffer:`, { 
-      fileName: file.name, 
+    console.log(`[Upload API] Converting file to buffer:`, {
+      fileName: file.name,
       fileSize: file.size,
-      requestId 
+      requestId
     })
-    
+
     let buffer: Buffer
     try {
       const arrayBuffer = await file.arrayBuffer()
       buffer = Buffer.from(arrayBuffer)
-      console.log(`[Upload API] Buffer created successfully:`, { 
+      console.log(`[Upload API] Buffer created successfully:`, {
         bufferSize: buffer.length,
-        requestId 
+        requestId
       })
     } catch (bufferError) {
-      console.error(`[Upload API] Failed to convert file to buffer:`, { 
+      console.error(`[Upload API] Failed to convert file to buffer:`, {
         error: bufferError instanceof Error ? bufferError.message : String(bufferError),
         fileName: file.name,
-        requestId 
+        requestId
       })
       throw new Error(`Failed to convert file: ${bufferError instanceof Error ? bufferError.message : 'Unknown error'}`)
     }
 
     // Edge detection algorithm has been removed - using original image
-    
+
     // Create a timestamp-based filename
     const timestamp = photoTakenAt || new Date().toISOString()
     const timestampStr = new Date(timestamp).toISOString().replace(/[:.]/g, '-')
     const fileName = `${timestampStr}-${file.name}`
     const filePath = `menus/${restaurantSlug}/${fileName}`
 
-    console.log(`[Upload API] File preparation:`, { 
-      fileName, 
-      filePath, 
+    console.log(`[Upload API] File preparation:`, {
+      fileName,
+      filePath,
       timestampStr,
       bufferLength: buffer.length,
-      requestId 
+      requestId
     })
 
-    console.log(`[Upload API] Uploading file to storage:`, { 
-      filePath, 
-      fileSize: buffer.length, 
-      mimeType: file.type, 
+    console.log(`[Upload API] Uploading file to storage:`, {
+      filePath,
+      fileSize: buffer.length,
+      mimeType: file.type,
       restaurantId,
-      requestId 
+      requestId
     })
 
     // Upload to Supabase Storage using admin client (better permissions)
@@ -280,9 +280,9 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
 
-    console.log(`[Upload API] Storage upload response details:`, { 
+    console.log(`[Upload API] Storage upload response details:`, {
       hasError: !!uploadError,
-      uploadError: uploadError?.message, 
+      uploadError: uploadError?.message,
       uploadErrorCode: (uploadError as any)?.status,
       uploadErrorDetails: (uploadError as any)?.error,
       hasUploadData: !!uploadData,
@@ -293,12 +293,12 @@ export async function POST(request: NextRequest) {
     })
 
     if (uploadError) {
-      console.error(`[Upload API] Storage upload FAILED - detailed error:`, { 
+      console.error(`[Upload API] Storage upload FAILED - detailed error:`, {
         error: JSON.stringify(uploadError),
         errorMessage: uploadError.message,
         errorStatus: (uploadError as any)?.status,
         errorDetails: (uploadError as any)?.details,
-        filePath, 
+        filePath,
         requestId,
         bufferSize: buffer.length,
         fileType: file.type
@@ -312,10 +312,10 @@ export async function POST(request: NextRequest) {
       throw new Error('File upload succeeded but no path returned from storage')
     }
 
-    console.log(`[Upload API] File uploaded successfully to storage`, { 
-      uploadedPath: uploadData.path, 
-      filePath, 
-      requestId 
+    console.log(`[Upload API] File uploaded successfully to storage`, {
+      uploadedPath: uploadData.path,
+      filePath,
+      requestId
     })
 
     // Create a signed URL for OCR processing using admin client (better permissions)
@@ -326,12 +326,12 @@ export async function POST(request: NextRequest) {
     console.log(`[Upload API] Signed URL creation response:`, { signedURLError: signedURLError?.message, hasSignedUrl: !!signedURLData, requestId })
 
     if (signedURLError) {
-      console.error(`[Upload API] Signed URL creation failed:`, { 
-        error: signedURLError, 
+      console.error(`[Upload API] Signed URL creation failed:`, {
+        error: signedURLError,
         errorMessage: signedURLError.message,
         errorStatus: (signedURLError as any)?.status,
-        filePath, 
-        requestId 
+        filePath,
+        requestId
       })
       throw new DatabaseError('Failed to create signed URL', signedURLError)
     }
@@ -343,10 +343,10 @@ export async function POST(request: NextRequest) {
 
     // Also create a public URL for the file (for reference)
     const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${filePath}`
-    console.log(`[Upload API] URLs created:`, { 
-      publicUrl, 
-      signedUrlExpiry: '300 seconds', 
-      requestId 
+    console.log(`[Upload API] URLs created:`, {
+      publicUrl,
+      signedUrlExpiry: '300 seconds',
+      requestId
     })
 
     const isUuid = (val: string | null) => !!val && /^[0-9a-fA-F-]{36}$/.test(val)
@@ -357,30 +357,30 @@ export async function POST(request: NextRequest) {
       status: 'ocr_pending',
       is_anonymous: isAnonymousUpload
     }
-    
+
     // Only set uploaded_by for authenticated users
-    if (isUuid(userId)) {
+    if (userId) {
       uploadPayload.uploaded_by = userId
     }
 
-    console.log(`[Upload API] Creating menu image record in database:`, { 
-      restaurant_id: restaurantId, 
+    console.log(`[Upload API] Creating menu image record in database:`, {
+      restaurant_id: restaurantId,
       storage_path: filePath,
-      uploaded_by_uuid: isUuid(userId) ? userId : null,
+      uploaded_by_uuid: userId,
       is_anonymous: isAnonymousUpload,
       mime: file.type,
       status: 'ocr_pending',
       requestId,
       timestamp: new Date().toISOString()
     })
-    
+
     const { data: menuImageData, error: menuImageError } = await supabaseAdmin
       .from('menu_images')
       .insert([uploadPayload])
       .select()
       .single()
 
-    console.log(`[Upload API] Menu image record insertion response:`, { 
+    console.log(`[Upload API] Menu image record insertion response:`, {
       hasError: !!menuImageError,
       menuImageError: menuImageError?.message,
       menuImageErrorDetails: (menuImageError as any)?.details,
@@ -392,12 +392,12 @@ export async function POST(request: NextRequest) {
     })
 
     if (menuImageError || !menuImageData) {
-      console.error(`[Upload API] Failed to create menu image record:`, { 
-        error: menuImageError, 
+      console.error(`[Upload API] Failed to create menu image record:`, {
+        error: menuImageError,
         errorMessage: menuImageError?.message,
         errorDetails: (menuImageError as any)?.details,
-        hasData: !!menuImageData, 
-        requestId 
+        hasData: !!menuImageData,
+        requestId
       })
       throw new DatabaseError('Failed to create menu image record', menuImageError)
     }
@@ -411,22 +411,22 @@ export async function POST(request: NextRequest) {
     // Format required by OCR.space: data:<content_type>;base64,<base64_string>
     const base64String = buffer.toString('base64')
     const base64Image = `data:${file.type};base64,${base64String}`
-    
-    console.log(`[Upload API] Converted image to base64 with data URI:`, { 
+
+    console.log(`[Upload API] Converted image to base64 with data URI:`, {
       base64Length: base64Image.length,
       mimeType: file.type,
-      imageId: menuImageId, 
-      requestId 
+      imageId: menuImageId,
+      requestId
     })
 
     // Call OCR.Space API using the OCR service with base64 (more reliable than public URL)
     console.log(`[Upload API] Starting OCR processing:`, { imageId: menuImageId, method: 'base64', requestId, timestamp: new Date().toISOString() })
-    
+
     let ocrResult = null
     let ocrProcessingSucceeded = false
     let ocrErrorDetails = null
     let menuValidationResult = null
-    
+
     try {
       console.log(`[Upload API] Calling ocrSpaceV2Service.processAndValidateMenu:`, {
         base64Length: base64Image.length,
@@ -435,7 +435,7 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       // Process image with both OCR services (OCR.space + Maverick) and validate if it's a menu
       console.log(`[Upload API] Step 1: Starting dual OCR processing (OCR.space + Maverick) and menu validation:`, {
         imageId: menuImageId,
@@ -444,9 +444,9 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       const { combinedResult, validationResult } = await combinedOCRService.processAndValidateMenu(base64Image)
-      
+
       console.log(`[Upload API] Step 1 completed: Dual OCR processing response received:`, {
         imageId: menuImageId,
         hasCombinedResult: !!combinedResult,
@@ -457,9 +457,9 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
-      
-      
+
+
+
       console.log(`[Upload API] Step 1 completed: Menu validation result:`, {
         imageId: menuImageId,
         isMenu: validationResult.isMenu,
@@ -468,7 +468,7 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       // Check if the image is a valid menu
       const confidenceThreshold = 0.7;
       console.log(`[Upload API] Step 2: Checking menu validation against threshold:`, {
@@ -645,7 +645,7 @@ export async function POST(request: NextRequest) {
         ProcessingTimeInMilliseconds: combinedResult.processingDetails.totalTime
       }
       ocrProcessingSucceeded = true
-      
+
       console.log(`[Upload API] Dual OCR and menu validation completed successfully:`, {
         imageId: menuImageId,
         success: true,
@@ -662,14 +662,14 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
       const errorStack = error instanceof Error ? error.stack : ''
-      
+
       ocrErrorDetails = {
         errorMessage: errorMsg,
         errorType: error instanceof Error ? error.constructor.name : 'Unknown',
         errorStack: errorStack,
         timestamp: new Date().toISOString()
       }
-      
+
       console.error(`[Upload API] Modal OCR processing FAILED:`, {
         error: errorMsg,
         errorType: error instanceof Error ? error.constructor.name : 'Unknown',
@@ -682,7 +682,7 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       console.log(`[Upload API] OCR processing failed - rejecting image since we cannot validate if it's a menu`, {
         imageId: menuImageId,
         requestId,
@@ -776,7 +776,7 @@ export async function POST(request: NextRequest) {
     // Only save OCR result if OCR was successful
     let ocrResultId = null
     let ocrData = null
-    
+
     if (ocrProcessingSucceeded && ocrResult) {
       console.log(`[Upload API] Preparing to save OCR result to database:`, {
         imageId: menuImageId,
@@ -788,7 +788,7 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       const ocrResultPayload = {
         image_id: menuImageId,
         raw_json: ocrResult,
@@ -798,7 +798,7 @@ export async function POST(request: NextRequest) {
         ocr_engine: 4, // Using 4 to indicate dual OCR processing (OCR.space + Maverick)
         processing_time_ms: ocrResult.ProcessingTimeInMilliseconds || 0
       }
-      
+
       console.log(`[Upload API] OCR result payload prepared:`, {
         imageId: menuImageId,
         textLength: ocrResultPayload.text.length,
@@ -807,7 +807,7 @@ export async function POST(request: NextRequest) {
         requestId,
         timestamp: new Date().toISOString()
       })
-      
+
       const { data: savedOcrData, error: ocrSaveError } = await supabaseAdmin
         .from('ocr_results')
         .insert([ocrResultPayload])
@@ -869,10 +869,10 @@ export async function POST(request: NextRequest) {
             imageId: menuImageId,
             requestId
           })
-          
+
           extractedMenu = await menuAnalyzer.analyzeMenuFromImage(base64Image)
           menuAnalysisSucceeded = true
-          
+
           console.log(`[Upload API] Menu analysis from image succeeded:`, {
             imageId: menuImageId,
             sectionsCount: extractedMenu.sections.length,
@@ -896,10 +896,10 @@ export async function POST(request: NextRequest) {
                 textLength: ocrResult.ParsedResults[0].ParsedText.length,
                 requestId
               })
-              
+
               extractedMenu = await menuAnalyzer.analyzeMenuFromText(ocrResult.ParsedResults[0].ParsedText)
               menuAnalysisSucceeded = true
-              
+
               console.log(`[Upload API] Menu analysis from OCR text succeeded:`, {
                 imageId: menuImageId,
                 sectionsCount: extractedMenu.sections.length,
@@ -915,7 +915,7 @@ export async function POST(request: NextRequest) {
               imageError: imageAnalysisError instanceof Error ? imageAnalysisError.message : String(imageAnalysisError),
               textError: textAnalysisError instanceof Error ? textAnalysisError.message : String(textAnalysisError)
             }
-            
+
             console.error(`[Upload API] Both image and text analysis failed:`, {
               imageId: menuImageId,
               errors: menuAnalysisError,
@@ -930,7 +930,7 @@ export async function POST(request: NextRequest) {
           try {
             // Validate and sanitize the menu data
             const validatedMenu = sanitizeMenuData(extractedMenu)
-            
+
             console.log(`[Upload API] Menu data validated successfully:`, {
               imageId: menuImageId,
               sectionsCount: validatedMenu.sections.length,
@@ -946,7 +946,7 @@ export async function POST(request: NextRequest) {
               requestId,
               timestamp: new Date().toISOString()
             })
-            
+
             const { error: deleteError } = await supabaseAdmin
               .from('menus')
               .delete()
@@ -1028,7 +1028,7 @@ export async function POST(request: NextRequest) {
     if (ocrResultId) {
       updatePayload.ocr_result_id = ocrResultId
     }
-    
+
     console.log(`[Upload API] Updating menu image status:`, {
       imageId: menuImageId,
       finalStatus,
@@ -1037,7 +1037,7 @@ export async function POST(request: NextRequest) {
       requestId,
       timestamp: new Date().toISOString()
     })
-    
+
     const { error: updateError } = await supabaseAdmin
       .from('menu_images')
       .update(updatePayload)
@@ -1169,29 +1169,29 @@ function sanitizeMenuData(extractedMenu: any) {
   if (!extractedMenu || typeof extractedMenu !== 'object') {
     return { sections: [] }
   }
-  
+
   // Ensure sections is an array
   if (!Array.isArray(extractedMenu.sections)) {
     return { sections: [] }
   }
-  
+
   // Sanitize each section
   const sanitizedSections = extractedMenu.sections.map((section: any) => {
     if (!section || typeof section !== 'object') {
       return { name: 'Unknown', items: [] }
     }
-    
+
     return {
       name: String(section.name || 'Unknown').substring(0, 100),
-      items: Array.isArray(section.items) 
+      items: Array.isArray(section.items)
         ? section.items.map((item: any) => ({
-            name: String(item.name || 'Unknown Item').substring(0, 100),
-            price: item.price ? String(item.price).substring(0, 20) : '',
-            description: item.description ? String(item.description).substring(0, 200) : ''
-          }))
+          name: String(item.name || 'Unknown Item').substring(0, 100),
+          price: item.price ? String(item.price).substring(0, 20) : '',
+          description: item.description ? String(item.description).substring(0, 200) : ''
+        }))
         : []
     }
   })
-  
+
   return { sections: sanitizedSections }
 }
