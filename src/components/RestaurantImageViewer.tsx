@@ -13,20 +13,45 @@ interface RestaurantImageViewerProps {
   onDelete?: (imageId: string) => Promise<void>
 }
 
-export default function RestaurantImageViewer({ 
-  imageUrl, 
-  alt, 
-  isOpen, 
-  onClose, 
-  isAdmin = false, 
-  imageId, 
-  onDelete 
+export default function RestaurantImageViewer({
+  imageUrl,
+  alt,
+  isOpen,
+  onClose,
+  isAdmin = false,
+  imageId,
+  onDelete
 }: RestaurantImageViewerProps) {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const imageRef = useRef<HTMLDivElement>(null)
+
+  // Handle history state for back button support
+  useEffect(() => {
+    if (isOpen) {
+      // Push state when opened
+      window.history.pushState({ viewerOpen: true }, '')
+
+      const handlePopState = () => {
+        // When back button is pressed, close the viewer
+        onClose()
+      }
+
+      window.addEventListener('popstate', handlePopState)
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [isOpen, onClose])
+
+  // Handle manual close (button/escape/backdrop)
+  const handleManualClose = () => {
+    // Go back in history, which will trigger popstate and call onClose
+    window.history.back()
+  }
 
   // Reset zoom and position when modal opens
   useEffect(() => {
@@ -104,29 +129,40 @@ export default function RestaurantImageViewer({
   return (
     <Popup
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleManualClose}
       closeOnBackdropClick={true}
       closeOnEscape={true}
-      showCloseButton={true}
-      className="w-full h-full max-w-7xl max-h-[95vh] bg-black m-4"
-      backdropClassName="bg-black bg-opacity-95"
+      showCloseButton={false}
+      className="fixed inset-0 w-full h-full bg-black m-0 rounded-none max-w-none max-h-none"
+      backdropClassName="bg-black bg-opacity-100"
     >
       {/* Header Controls */}
-      <div className="absolute top-0 left-0 right-0 p-6 flex items-center bg-gradient-to-b from-black/90 to-transparent z-10">
-        <div className="text-white text-sm font-semibold ml-4">
+      <div className="absolute top-0 left-0 right-0 p-4 flex items-center bg-gradient-to-b from-black/90 to-transparent z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handleManualClose()
+          }}
+          className="w-10 h-10 flex items-center justify-center text-white rounded-full hover:bg-white/10 transition-colors"
+          aria-label="Go back"
+        >
+          <i className="ri-arrow-left-line text-2xl"></i>
+        </button>
+
+        <div className="text-white text-base font-semibold ml-2 truncate flex-1">
           {alt}
         </div>
+
         {isAdmin && imageId && onDelete && (
           <button
             onClick={async (e) => {
               e.stopPropagation()
               await onDelete(imageId)
             }}
-            className="ml-auto w-12 h-12 bg-red-500/90 backdrop-blur-md rounded-full flex items-center justify-center text-white border-2 border-red-400/40 hover:bg-red-600/90 transition-colors shadow-lg"
+            className="ml-2 w-10 h-10 bg-red-500/90 backdrop-blur-md rounded-full flex items-center justify-center text-white border-2 border-red-400/40 hover:bg-red-600/90 transition-colors shadow-lg"
             aria-label="Delete image"
-            style={{ minWidth: '48px', minHeight: '48px' }}
           >
-            <i className="ri-delete-bin-line text-xl"></i>
+            <i className="ri-delete-bin-line text-lg"></i>
           </button>
         )}
       </div>
@@ -203,13 +239,13 @@ export default function RestaurantImageViewer({
       </div>
 
       {/* Help Text */}
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-xs z-10 opacity-0 hover:opacity-100 transition-opacity">
+      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-xs z-10 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
         <div className="flex items-center gap-4">
           <span>Scroll to zoom</span>
           <span>•</span>
           <span>Drag to pan</span>
           <span>•</span>
-          <span>ESC to close</span>
+          <span>Double tap to reset</span>
         </div>
       </div>
     </Popup>
