@@ -377,7 +377,7 @@ export default function MenuUpload({
               border: '1px solid #22C55E'
             }}>
               <i className="ri-user-unfollow-line" style={{ marginRight: '8px' }}></i>
-              You're uploading as an anonymous user. Sign up to get credit for your contributions!
+              You&apos;re uploading as an anonymous user. Sign up to get credit for your contributions!
             </div>
           )}
 

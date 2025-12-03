@@ -244,7 +244,7 @@ export default function ProfilePage() {
                 <i className="ri-bar-chart-line text-blue-600 mr-3 mt-1"></i>
                 <div>
                   <div className="font-medium">Track Your Impact</div>
-                  <div className="text-sm text-gray-600">See how many people you've helped with your uploads</div>
+                  <div className="text-sm text-gray-600">See how many people you&apos;ve helped with your uploads</div>
                 </div>
               </div>
             </div>

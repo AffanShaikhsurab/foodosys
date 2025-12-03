@@ -62,7 +62,7 @@ export default function AnonymousUploadPopup({
           </div>
           <h2 className="text-xl font-bold mb-2">Anonymous Upload</h2>
           <p className="text-gray-600 mb-4">
-            You're about to upload as an anonymous user. Your photo will help others find great food options!
+            You&apos;re about to upload as an anonymous user. Your photo will help others find great food options!
           </p>
         </div>
 
