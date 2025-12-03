@@ -6,7 +6,7 @@ import BottomNav from '@/components/BottomNav'
 import { apiClient } from '@/lib/api'
 import { formatTimestamp, getEffectiveTimestamp, groupImagesByMealType } from '@/lib/utils'
 import { MenuImage, OCRResult } from '@/lib/types'
-import ImageViewer from '@/components/ImageViewer'
+import RestaurantImageViewer from '@/components/RestaurantImageViewer'
 import { useUser } from '@clerk/nextjs'
 
 interface DisplayMenu extends MenuImage {
@@ -461,7 +461,7 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
       <BottomNav />
 
       {selectedImage && (
-        <ImageViewer
+        <RestaurantImageViewer
           imageUrl={selectedImage.url}
           alt={selectedImage.alt}
           isOpen={viewerOpen}

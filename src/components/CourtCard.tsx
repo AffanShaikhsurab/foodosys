@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { getCurrentMealType } from '@/lib/meal-menu-availability'
 
 interface Court {
   id: number
@@ -10,10 +11,16 @@ interface Court {
   status: 'available' | 'missing'
   imageUrl: string
   slug?: string
+  hasCurrentMealMenu?: boolean
+  availableMealTypes?: string[]
 }
 
 interface CourtCardProps {
   court: Court
+}
+
+function getCurrentMealTypeLabel(): string {
+  return getCurrentMealType()
 }
 
 export default function CourtCard({ court }: CourtCardProps) {
@@ -60,6 +67,26 @@ export default function CourtCard({ court }: CourtCardProps) {
           <div className="status-dot"></div>
           {court.status === 'available' ? 'Menu Available' : 'Menu Not Available'}
         </div>
+        {court.status === 'available' && court.hasCurrentMealMenu !== undefined && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '11px',
+            fontWeight: '500',
+            marginTop: '4px',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            backgroundColor: court.hasCurrentMealMenu ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            color: court.hasCurrentMealMenu ? 'var(--accent-lime)' : 'var(--accent-pink)'
+          }}>
+            {court.hasCurrentMealMenu ? (
+              <span>✅ {getCurrentMealTypeLabel()} Menu Available</span>
+            ) : (
+              <span>⚠️ No {getCurrentMealTypeLabel()} Menu</span>
+            )}
+          </div>
+        )}
       </div>
       <button 
         className="btn-mini" 

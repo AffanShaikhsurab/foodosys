@@ -14,10 +14,14 @@ const ratelimit = new Ratelimit({
 
 // Define protected routes that require authentication
 const isProtectedRoute = createRouteMatcher([
-    '/upload(.*)',
     '/settings(.*)',
-    '/api/upload(.*)',
     '/api/profile(.*)',
+]);
+
+// Define routes that require authentication for some features but allow anonymous access
+const isPartiallyProtectedRoute = createRouteMatcher([
+    '/upload(.*)',
+    '/api/upload(.*)',
 ]);
 
 // Routes that don't need onboarding check
@@ -37,8 +41,15 @@ export default clerkMiddleware(async (auth, req) => {
         await auth.protect();
     }
 
-    // Check if user has completed onboarding (only for authenticated users on protected routes)
-    if (userId && isProtectedRoute(req) && !isPublicRoute(req)) {
+    // For partially protected routes, allow access but don't require authentication
+    // The components will handle anonymous vs authenticated behavior
+    if (isPartiallyProtectedRoute(req)) {
+        // Don't call auth.protect() here - let the component handle authentication
+        // This allows anonymous users to access upload page and API
+    }
+
+    // Check if user has completed onboarding (only for authenticated users on protected or partially protected routes)
+    if (userId && (isProtectedRoute(req) || isPartiallyProtectedRoute(req)) && !isPublicRoute(req)) {
         try {
             // Get Clerk session token without template - modern approach
             const { getToken } = await auth();

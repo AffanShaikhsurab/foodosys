@@ -5,6 +5,7 @@ import CourtCard from './CourtCard'
 import { useLocation } from '@/hooks/useLocation'
 import { useDistance } from '@/hooks/useDistance'
 import { getMenuAvailabilityForRestaurants } from '@/lib/menu-availability'
+import { getMealAvailabilityForRestaurants, getCurrentMealLabel, getCurrentMealIcon, RestaurantMealAvailability } from '@/lib/meal-menu-availability'
 
 interface Restaurant {
   id: string
@@ -25,7 +26,8 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [menuAvailability, setMenuAvailability] = useState<Record<string, boolean>>({})
-  const [menuStats, setMenuStats] = useState({ withMenus: 0, total: 0 })
+  const [mealAvailability, setMealAvailability] = useState<Record<string, RestaurantMealAvailability>>({})
+  const [menuStats, setMenuStats] = useState({ withMenus: 0, total: 0, withCurrentMealMenu: 0 })
   const { calculateDistance, formatDistance } = useDistance()
 
   console.log('CourtList - userLocation prop:', userLocation)
@@ -45,13 +47,19 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
           const availability = await getMenuAvailabilityForRestaurants(restaurantIds)
           console.log('Menu availability data:', availability)
           
+          // Check meal-specific availability
+          const mealAvail = await getMealAvailabilityForRestaurants(restaurantIds)
+          console.log('Meal availability data:', mealAvail)
+          
           // Count restaurants with and without menus
           const withMenus = Object.values(availability).filter(Boolean).length
           const withoutMenus = Object.values(availability).filter(v => !v).length
-          console.log(`Restaurants with menus: ${withMenus}, without menus: ${withoutMenus}`)
+          const withCurrentMealMenu = Object.values(mealAvail).filter(m => m.hasCurrentMealMenu).length
+          console.log(`Restaurants with menus: ${withMenus}, without menus: ${withoutMenus}, with current meal menu: ${withCurrentMealMenu}`)
           
           setMenuAvailability(availability)
-          setMenuStats({ withMenus, total: data.restaurants.length })
+          setMealAvailability(mealAvail)
+          setMenuStats({ withMenus, total: data.restaurants.length, withCurrentMealMenu })
         }
       } catch (error) {
         console.error('Error fetching restaurants:', error)
@@ -101,13 +109,24 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
     }
   })
 
-  // Sort by menu availability first, then by distance
+  // Sort by current meal menu availability first, then general menu availability, then by distance
   const sortedRestaurants = [...restaurantsWithDistance].sort((a, b) => {
-    // Check if restaurants have menus
+    // Check if restaurants have current meal menus
+    const aMealInfo = mealAvailability[a.id]
+    const bMealInfo = mealAvailability[b.id]
+    
+    const aHasCurrentMealMenu = aMealInfo?.hasCurrentMealMenu ? 1 : 0
+    const bHasCurrentMealMenu = bMealInfo?.hasCurrentMealMenu ? 1 : 0
+    
+    // Sort by current meal menu availability first
+    if (aHasCurrentMealMenu !== bHasCurrentMealMenu) {
+      return bHasCurrentMealMenu - aHasCurrentMealMenu // Descending: 1 (has current meal menu) before 0 (no current meal menu)
+    }
+    
+    // If both have same current meal menu status, check general menu availability
     const aHasMenu = menuAvailability[a.id] ? 1 : 0
     const bHasMenu = menuAvailability[b.id] ? 1 : 0
     
-    // Sort by menu availability first (restaurants with menus come first)
     if (aHasMenu !== bHasMenu) {
       return bHasMenu - aHasMenu // Descending: 1 (has menu) before 0 (no menu)
     }
@@ -159,7 +178,9 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
               distance: 'Unknown',
               status: menuAvailability[restaurant.id] ? 'available' as const : 'missing' as const,
               imageUrl: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80`,
-              slug: restaurant.slug
+              slug: restaurant.slug,
+              hasCurrentMealMenu: mealAvailability[restaurant.id]?.hasCurrentMealMenu,
+              availableMealTypes: mealAvailability[restaurant.id]?.availableMealTypes
             }}
           />
         ))}
@@ -181,8 +202,13 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
           fontWeight: '600',
           boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
         }}>
-          <span style={{ fontSize: '18px', marginRight: '8px' }}>🍽️</span>
-          {menuStats.withMenus} of {menuStats.total} restaurants have live menus
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ fontSize: '18px', marginRight: '8px' }}>{getCurrentMealIcon()}</span>
+            {getCurrentMealLabel()} Time: {menuStats.withCurrentMealMenu} of {menuStats.total} restaurants have {getCurrentMealLabel().toLowerCase()} menus
+          </div>
+          <div style={{ fontSize: '12px', opacity: '0.9' }}>
+            🍽️ {menuStats.withMenus} of {menuStats.total} restaurants have any menu
+          </div>
         </div>
       )}
       {sortedRestaurants.map((restaurant) => (
@@ -195,7 +221,9 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
             distance: restaurant.distance,
             status: menuAvailability[restaurant.id] ? 'available' as const : 'missing' as const,
             imageUrl: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80`,
-            slug: restaurant.slug
+            slug: restaurant.slug,
+            hasCurrentMealMenu: mealAvailability[restaurant.id]?.hasCurrentMealMenu,
+            availableMealTypes: mealAvailability[restaurant.id]?.availableMealTypes
           }}
         />
       ))}
