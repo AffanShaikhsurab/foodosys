@@ -353,7 +353,11 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                         {menu.contributor && (
                           <div className="contributor-info">
                             <div className="contributor-avatar">
-                              {menu.contributor.avatar_url ? (
+                              {menu.contributor.is_anonymous ? (
+                                <div className="avatar-placeholder anonymous-avatar">
+                                  <i className="ri-user-incognito-line"></i>
+                                </div>
+                              ) : menu.contributor.avatar_url ? (
                                 <img 
                                   src={menu.contributor.avatar_url} 
                                   alt={menu.contributor.display_name}
@@ -366,7 +370,12 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                             </div>
                             <div className="contributor-details">
                               <span className="contributor-label">Contributed by</span>
-                              <span className="contributor-name">{menu.contributor.display_name || 'Anonymous'}</span>
+                              <div className="contributor-name-wrapper">
+                                <span className="contributor-name">{menu.contributor.display_name || 'Anonymous'}</span>
+                                {menu.contributor.is_anonymous && (
+                                  <span className="anonymous-badge">Anonymous</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -742,6 +751,27 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         .btn-pill.report.active { 
           background: #FFEBEE; 
           color: #D32F2F; 
+        }
+        
+        .anonymous-avatar {
+          background: #E0E0E0 !important;
+          color: #666666 !important;
+          font-size: 16px;
+        }
+        
+        .contributor-name-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        
+        .anonymous-badge {
+          font-size: 10px;
+          padding: 2px 6px;
+          background: #F0F0F0;
+          color: #666666;
+          border-radius: 10px;
+          font-weight: 500;
         }
       `}</style>
     </div>

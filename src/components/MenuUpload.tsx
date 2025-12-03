@@ -33,9 +33,17 @@ interface MenuUploadProps {
   restaurantSlug: string
   onUploadSuccess?: (response: UploadResponse) => void
   onUploadError?: (error: Error) => void
+  isAnonymousMode?: boolean
+  onShowAnonymousPopup?: () => void
 }
 
-export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadError }: MenuUploadProps) {
+export default function MenuUpload({ 
+  restaurantSlug, 
+  onUploadSuccess, 
+  onUploadError,
+  isAnonymousMode = false,
+  onShowAnonymousPopup
+}: MenuUploadProps) {
   const router = useRouter()
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
@@ -173,11 +181,19 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     })
     
     if (!isAuthenticated) {
-      logUpload('Redirecting to auth page', {
-        operation: 'redirect_to_auth',
-        reason: 'user_not_authenticated'
-      })
-      router.push('/auth?redirectTo=/upload')
+      if (onShowAnonymousPopup) {
+        logUpload('Showing anonymous upload popup', {
+          operation: 'show_anonymous_popup',
+          reason: 'user_not_authenticated'
+        })
+        onShowAnonymousPopup()
+      } else {
+        logUpload('Redirecting to auth page', {
+          operation: 'redirect_to_auth',
+          reason: 'user_not_authenticated'
+        })
+        router.push('/auth?redirectTo=/upload')
+      }
       return
     }
     
@@ -219,12 +235,13 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     logUpload('Upload initiated', {
       operation: 'upload_start',
       isAuthenticated,
+      isAnonymousMode,
       hasCapturedPhoto: !!capturedPhoto,
       hasPhotoTimestamp: !!photoTimestamp,
       restaurantSlug
     })
     
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isAnonymousMode) {
       const errorMessage = 'Please sign in to upload photos'
       logUpload('Upload blocked - user not authenticated', {
         operation: 'upload_blocked',
@@ -248,7 +265,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
           fileName: `menu-photo-${new Date(photoTimestamp).toISOString().replace(/[:.]/g, '-')}.jpg`
         }
         
-        const response = await apiClient.uploadMenuImageFromBase64(photoData, restaurantSlug)
+        const response = await apiClient.uploadMenuImageFromBase64(photoData, restaurantSlug, undefined, isAnonymousMode)
         onUploadSuccess?.(response)
         setPreview(null)
         setCapturedPhoto(null)
@@ -270,7 +287,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
           fileType: file.type
         })
         
-        const response = await apiClient.uploadMenuImage(file, restaurantSlug)
+        const response = await apiClient.uploadMenuImage(file, restaurantSlug, undefined, isAnonymousMode)
         
         const processingTime = Date.now() - startTime
         logUpload('File upload completed successfully', {

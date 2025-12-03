@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import MenuUpload from '@/components/MenuUpload'
+import AnonymousUploadPopup from '@/components/AnonymousUploadPopup'
 import { apiClient } from '@/lib/api'
 import type { Restaurant } from '@/lib/types'
 import { useLocation } from '@/hooks/useLocation'
@@ -19,6 +20,8 @@ export default function UploadPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [showAnonymousPopup, setShowAnonymousPopup] = useState(false)
+  const [isAnonymousMode, setIsAnonymousMode] = useState(false)
 
   const { location, requestLocation, isLoading: isLocationLoading } = useLocation()
   const { calculateDistance } = useDistance()
@@ -26,13 +29,10 @@ export default function UploadPage() {
   const { user } = useUser()
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const initializePage = async () => {
       try {
-        if (!user) {
-          router.push('/auth?redirectTo=/upload')
-          return
-        }
-        setIsAuthenticated(true)
+        // Set authentication status
+        setIsAuthenticated(!!user)
 
         // Fetch all restaurants
         const restaurantsData = await apiClient.getRestaurants()
@@ -41,15 +41,14 @@ export default function UploadPage() {
         // Request location after restaurants are fetched
         requestLocation()
       } catch (error) {
-        console.error('Error checking authentication:', error)
-        router.push('/auth?redirectTo=/upload')
+        console.error('Error initializing upload page:', error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    checkAuth()
-  }, [router, user])
+    initializePage()
+  }, [user])
 
   // Check for nearest restaurant when location and restaurants are available
   useEffect(() => {
@@ -112,21 +111,26 @@ export default function UploadPage() {
     }, 3000)
   }
 
+  const handleShowAnonymousPopup = () => {
+    setShowAnonymousPopup(true)
+  }
+
+  const handleAnonymousUpload = () => {
+    setIsAnonymousMode(true)
+    setShowAnonymousPopup(false)
+  }
+
   if (isLoading) {
     return (
       <div className="app-container" style={{ position: 'relative' }}>
         <div className="min-h-screen bg-[#FDFDE8] flex items-center justify-center">
           <div className="text-center">
             <div className="ri-loader-4-line text-4xl text-[#2C3E2E] animate-spin" style={{ animation: 'spin 1s linear infinite' }}></div>
-            <p className="mt-4 text-[#889287]">Checking authentication...</p>
+            <p className="mt-4 text-[#889287]">Loading...</p>
           </div>
         </div>
       </div>
     )
-  }
-
-  if (!isAuthenticated) {
-    return null // Will redirect to auth page
   }
 
   return (
@@ -191,6 +195,8 @@ export default function UploadPage() {
           restaurantSlug={selectedRestaurant}
           onUploadSuccess={handleUploadSuccess}
           onUploadError={handleUploadError}
+          isAnonymousMode={isAnonymousMode}
+          onShowAnonymousPopup={handleShowAnonymousPopup}
         />
       ) : (
         <div className="camera-zone">
@@ -221,6 +227,13 @@ export default function UploadPage() {
           <i className="ri-checkbox-circle-fill"></i> {message}
         </div>
       )}
+
+      {/* Anonymous Upload Popup */}
+      <AnonymousUploadPopup
+        isOpen={showAnonymousPopup}
+        onClose={() => setShowAnonymousPopup(false)}
+        onContinueAsAnonymous={handleAnonymousUpload}
+      />
 
       <BottomNav />
     </div>

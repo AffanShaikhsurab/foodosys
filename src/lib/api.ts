@@ -105,7 +105,7 @@ class ApiClient {
   }
 
   // Upload
-  async uploadMenuImage(file: File, restaurantSlug: string, token?: string | null): Promise<{
+  async uploadMenuImage(file: File, restaurantSlug: string, token?: string | null, isAnonymous?: boolean): Promise<{
     success: boolean
     menuImage: MenuImage
     ocrResult: OCRResult
@@ -115,6 +115,12 @@ class ApiClient {
     formData.append('restaurantSlug', restaurantSlug)
 
     const authHeaders = await this.getAuthHeaders(token)
+    
+    // Add anonymous header if needed
+    if (isAnonymous) {
+      authHeaders['x-anonymous-upload'] = 'true'
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/upload`, {
       method: 'POST',
       headers: authHeaders,
@@ -130,12 +136,18 @@ class ApiClient {
   }
 
   // Upload base64 image with timestamp
-  async uploadMenuImageFromBase64(photoData: PhotoUploadData, restaurantSlug: string, token?: string | null): Promise<{
+  async uploadMenuImageFromBase64(photoData: PhotoUploadData, restaurantSlug: string, token?: string | null, isAnonymous?: boolean): Promise<{
     success: boolean
     menuImage: MenuImage
     ocrResult: OCRResult
   }> {
     const authHeaders = await this.getAuthHeaders(token)
+    
+    // Add anonymous header if needed
+    if (isAnonymous) {
+      authHeaders['x-anonymous-upload'] = 'true'
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/upload`, {
       method: 'POST',
       headers: {

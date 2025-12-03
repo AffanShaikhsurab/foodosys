@@ -22,9 +22,10 @@ export interface MenuImage {
   photo_taken_at?: string | null
   created_at: string
   contributor?: {
-    user_id: string
+    user_id?: string
     display_name: string
     avatar_url?: string
+    is_anonymous?: boolean
   }
 }
 

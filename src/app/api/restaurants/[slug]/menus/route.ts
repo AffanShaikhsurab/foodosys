@@ -70,6 +70,8 @@ export async function GET(
         status,
         created_at,
         uploaded_by,
+        is_anonymous,
+        anonymous_display_name,
         ocr_results!ocr_results_image_id_fkey(*),
         menus!menus_menu_image_id_fkey(
           id,
@@ -111,7 +113,9 @@ export async function GET(
     if (data && data.length > 0) {
       console.log(`[Menus API] ${requestId} Fetching contributor information for ${data.length} images`)
       
-      const uploaderIds = Array.from(new Set(data.map((menu: any) => menu.uploaded_by).filter(Boolean)))
+      // Separate anonymous and authenticated uploads
+      const authenticatedMenus = data.filter((menu: any) => !menu.is_anonymous && menu.uploaded_by)
+      const uploaderIds = Array.from(new Set(authenticatedMenus.map((menu: any) => menu.uploaded_by).filter(Boolean)))
       
       if (uploaderIds.length > 0) {
         const { data: contributors, error: contributorsError } = await (await createServerClient())
@@ -126,18 +130,52 @@ export async function GET(
           )
           
           data.forEach((menu: any) => {
-            if (menu.uploaded_by) {
+            if (menu.is_anonymous) {
+              // Handle anonymous uploads
+              menu.contributor = {
+                display_name: menu.anonymous_display_name || 'Anonymous',
+                avatar_url: null,
+                is_anonymous: true
+              }
+            } else if (menu.uploaded_by) {
+              // Handle authenticated uploads
               menu.contributor = contributorMap.get(menu.uploaded_by) || null
+              if (menu.contributor) {
+                menu.contributor.is_anonymous = false
+              }
             }
           })
           
           console.log(`[Menus API] ${requestId} Contributors mapped successfully:`, {
             contributorsFound: contributors.length,
-            imagesWithContributors: data.filter((m: any) => m.contributor).length
+            imagesWithContributors: data.filter((m: any) => m.contributor).length,
+            anonymousImages: data.filter((m: any) => m.is_anonymous).length
           })
         } else {
           console.error(`[Menus API] ${requestId} Failed to fetch contributors:`, contributorsError)
+          
+          // Fallback for anonymous uploads if contributor fetch fails
+          data.forEach((menu: any) => {
+            if (menu.is_anonymous) {
+              menu.contributor = {
+                display_name: menu.anonymous_display_name || 'Anonymous',
+                avatar_url: null,
+                is_anonymous: true
+              }
+            }
+          })
         }
+      } else {
+        // No authenticated uploads, but might have anonymous ones
+        data.forEach((menu: any) => {
+          if (menu.is_anonymous) {
+            menu.contributor = {
+              display_name: menu.anonymous_display_name || 'Anonymous',
+              avatar_url: null,
+              is_anonymous: true
+            }
+          }
+        })
       }
     }
 
