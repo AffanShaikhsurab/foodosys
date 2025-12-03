@@ -44,7 +44,7 @@ export default function ProfilePage() {
         // Check authentication
         if (!user) {
           setLoading(false)
-          router.push('/auth')
+          // Don't redirect to auth page, allow anonymous users to see the sign-up prompt
           return
         }
 
@@ -195,10 +195,80 @@ export default function ProfilePage() {
   if (!userProfile) {
     return (
       <>
-        <div className="p-4 text-center">
-          <h2 className="text-xl font-bold mb-4">Profile</h2>
-          <p>Please log in to view your profile.</p>
+        {/* Top Bar */}
+        <div className="top-bar">
+          <button className="icon-btn">
+            <i className="ri-arrow-left-line"></i>
+          </button>
+          <button className="icon-btn">
+            <i className="ri-settings-4-line"></i>
+          </button>
         </div>
+
+        {/* Anonymous User Prompt */}
+        <div className="p-4">
+          <div className="text-center mb-6">
+            <div className="mb-4">
+              <i className="ri-user-3-line text-6xl text-gray-300"></i>
+            </div>
+            <h2 className="text-xl font-bold mb-2">Anonymous User</h2>
+            <p className="text-gray-600 mb-6">Sign up to track your contributions and join the community!</p>
+          </div>
+
+          {/* Benefits of Signing Up */}
+          <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold mb-3 text-blue-900">Why sign up?</h3>
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <i className="ri-trophy-line text-blue-600 mr-3 mt-1"></i>
+                <div>
+                  <div className="font-medium">Get Karma Points</div>
+                  <div className="text-sm text-gray-600">Earn points for each upload and climb the leaderboard</div>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <i className="ri-medal-line text-blue-600 mr-3 mt-1"></i>
+                <div>
+                  <div className="font-medium">Unlock Achievements</div>
+                  <div className="text-sm text-gray-600">Collect badges as you contribute to the community</div>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <i className="ri-user-star-line text-blue-600 mr-3 mt-1"></i>
+                <div>
+                  <div className="font-medium">Get Recognition</div>
+                  <div className="text-sm text-gray-600">Your name will appear on your contributions</div>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <i className="ri-bar-chart-line text-blue-600 mr-3 mt-1"></i>
+                <div>
+                  <div className="font-medium">Track Your Impact</div>
+                  <div className="text-sm text-gray-600">See how many people you&apos;ve helped with your uploads</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sign Up Button */}
+          <button
+            onClick={() => router.push('/auth')}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Sign Up Now
+          </button>
+
+          {/* Continue as Anonymous Option */}
+          <div className="text-center mt-4">
+            <button
+              onClick={() => router.push('/')}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              Continue as Anonymous
+            </button>
+          </div>
+        </div>
+
         <BottomNav />
       </>
     )

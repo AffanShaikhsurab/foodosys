@@ -33,9 +33,17 @@ interface MenuUploadProps {
   restaurantSlug: string
   onUploadSuccess?: (response: UploadResponse) => void
   onUploadError?: (error: Error) => void
+  isAnonymousMode?: boolean
+  onShowAnonymousPopup?: () => void
 }
 
-export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadError }: MenuUploadProps) {
+export default function MenuUpload({
+  restaurantSlug,
+  onUploadSuccess,
+  onUploadError,
+  isAnonymousMode = false,
+  onShowAnonymousPopup
+}: MenuUploadProps) {
   const router = useRouter()
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
@@ -56,7 +64,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
       restaurantSlug
     })
     logger.componentMount('MenuUpload')
-    
+
     return () => {
       logUpload('MenuUpload component unmounted', { operation: 'component_unmount' })
       logger.componentUnmount('MenuUpload')
@@ -66,23 +74,23 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
   useEffect(() => {
     const checkAuth = async () => {
       logUpload('Starting authentication check', { operation: 'auth_check_start' })
-      
+
       try {
         const isAuth = !!user
-        
+
         logUpload('Authentication check completed', {
           operation: 'auth_check_completed',
           isAuthenticated: isAuth,
           userId: user?.id || 'unknown'
         })
-        
+
         setIsAuthenticated(isAuth)
       } catch (error) {
         logUpload('Authentication check failed', {
           operation: 'auth_check_error',
           error: error instanceof Error ? error.message : 'Unknown error'
         })
-        
+
         console.error('Error checking authentication:', error)
         setIsAuthenticated(false)
       } finally {
@@ -100,17 +108,17 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     const bstr = atob(arr[1])
     let n = bstr.length
     const u8arr = new Uint8Array(n)
-    
+
     while (n--) {
       u8arr[n] = bstr.charCodeAt(n)
     }
-    
+
     return new File([u8arr], filename, { type: mime })
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    
+
     if (file) {
       logUpload('File selected for upload', {
         operation: 'file_selected',
@@ -118,27 +126,27 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
         fileSize: file.size,
         fileType: file.type
       })
-      
+
       const reader = new FileReader()
       reader.onload = (e) => {
         const result = e.target?.result as string
         setPreview(result)
         setCapturedPhoto(null) // Clear any captured photo when using file input
-        
+
         logUpload('File loaded successfully', {
           operation: 'file_loaded',
           fileName: file.name,
           previewLength: result?.length || 0
         })
       }
-      
+
       reader.onerror = () => {
         logUpload('Failed to read selected file', {
           operation: 'file_read_error',
           fileName: file.name
         })
       }
-      
+
       reader.readAsDataURL(file)
     } else {
       logUpload('No file selected', { operation: 'no_file_selected' })
@@ -152,7 +160,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
       photoLength: photoBase64.length,
       restaurantSlug
     })
-    
+
     setCapturedPhoto(photoBase64)
     setPhotoTimestamp(timestamp)
     setPreview(photoBase64)
@@ -169,22 +177,31 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     logUpload('Scan button clicked', {
       operation: 'scan_clicked',
       isAuthenticated,
+      isAnonymousMode,
       restaurantSlug
     })
-    
-    if (!isAuthenticated) {
-      logUpload('Redirecting to auth page', {
-        operation: 'redirect_to_auth',
-        reason: 'user_not_authenticated'
-      })
-      router.push('/auth?redirectTo=/upload')
+
+    if (!isAuthenticated && !isAnonymousMode) {
+      if (onShowAnonymousPopup) {
+        logUpload('Showing anonymous upload popup', {
+          operation: 'show_anonymous_popup',
+          reason: 'user_not_authenticated'
+        })
+        onShowAnonymousPopup()
+      } else {
+        logUpload('Redirecting to auth page', {
+          operation: 'redirect_to_auth',
+          reason: 'user_not_authenticated'
+        })
+        router.push('/auth?redirectTo=/upload')
+      }
       return
     }
-    
+
     setUploadError(null)
     setIsInitializing(true)
     setShowCamera(true)
-    
+
     // Set initializing to false after a short delay to allow camera to initialize
     setTimeout(() => {
       setIsInitializing(false)
@@ -205,7 +222,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
       operation: 'retake_photo',
       restaurantSlug
     })
-    
+
     setCapturedPhoto(null)
     setPhotoTimestamp(null)
     setPreview(null)
@@ -215,16 +232,17 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
 
   const handleUpload = async () => {
     const startTime = Date.now()
-    
+
     logUpload('Upload initiated', {
       operation: 'upload_start',
       isAuthenticated,
+      isAnonymousMode,
       hasCapturedPhoto: !!capturedPhoto,
       hasPhotoTimestamp: !!photoTimestamp,
       restaurantSlug
     })
-    
-    if (!isAuthenticated) {
+
+    if (!isAuthenticated && !isAnonymousMode) {
       const errorMessage = 'Please sign in to upload photos'
       logUpload('Upload blocked - user not authenticated', {
         operation: 'upload_blocked',
@@ -235,10 +253,10 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     }
 
     setUploadError(null)
-    
+
     try {
       setIsUploading(true)
-      
+
       // Check if we have a captured photo from camera
       if (capturedPhoto && photoTimestamp) {
         // Use the new base64 upload method with timestamp
@@ -247,31 +265,31 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
           timestamp: photoTimestamp,
           fileName: `menu-photo-${new Date(photoTimestamp).toISOString().replace(/[:.]/g, '-')}.jpg`
         }
-        
-        const response = await apiClient.uploadMenuImageFromBase64(photoData, restaurantSlug)
+
+        const response = await apiClient.uploadMenuImageFromBase64(photoData, restaurantSlug, undefined, isAnonymousMode)
         onUploadSuccess?.(response)
         setPreview(null)
         setCapturedPhoto(null)
         setPhotoTimestamp(null)
       } else {
         logUpload('Uploading file from file input', { operation: 'upload_file_input' })
-        
+
         // Otherwise use the file input (traditional upload)
         const file = fileInputRef.current?.files?.[0]
-        
+
         if (!file) {
           throw new Error('Please capture a photo or select a file')
         }
-        
+
         logUpload('File upload details', {
           operation: 'file_upload_details',
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type
         })
-        
-        const response = await apiClient.uploadMenuImage(file, restaurantSlug)
-        
+
+        const response = await apiClient.uploadMenuImage(file, restaurantSlug, undefined, isAnonymousMode)
+
         const processingTime = Date.now() - startTime
         logUpload('File upload completed successfully', {
           operation: 'upload_success',
@@ -282,7 +300,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
           ocrResultId: response.ocrResult?.id,
           ocrProcessingTime: response.ocrResult?.processing_time_ms
         })
-        
+
         onUploadSuccess?.(response)
         setPreview(null)
         setCapturedPhoto(null)
@@ -294,14 +312,14 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
     } catch (error) {
       const processingTime = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : 'Upload failed. Please try again.'
-      
+
       logUpload('Upload failed', {
         operation: 'upload_error',
         processingTime,
         errorMessage,
         errorType: error instanceof Error ? error.constructor.name : 'Unknown'
       })
-      
+
       setUploadError(errorMessage)
       onUploadError?.(error as Error)
     } finally {
@@ -332,7 +350,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
       ) : (
         <>
           {/* Authentication Message */}
-          {!isAuthenticated && (
+          {!isAuthenticated && !isAnonymousMode && (
             <div className="error-message" style={{
               marginBottom: '16px',
               padding: '16px',
@@ -346,7 +364,23 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
               Please sign in to upload photos and help other students find menu information.
             </div>
           )}
-          
+
+          {/* Anonymous Mode Message */}
+          {isAnonymousMode && (
+            <div className="success-message" style={{
+              marginBottom: '16px',
+              padding: '16px',
+              backgroundColor: '#F0FDF4',
+              color: '#166534',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '14px',
+              border: '1px solid #22C55E'
+            }}>
+              <i className="ri-user-unfollow-line" style={{ marginRight: '8px' }}></i>
+              You&apos;re uploading as an anonymous user. Sign up to get credit for your contributions!
+            </div>
+          )}
+
           {/* Error Display */}
           {uploadError && (
             <div className="error-message" style={{
@@ -361,13 +395,13 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
               {uploadError}
             </div>
           )}
-          
+
           {/* Camera Zone */}
           <div className="camera-zone">
             {preview ? (
-              <img 
-                src={preview} 
-                alt="Menu preview" 
+              <img
+                src={preview}
+                alt="Menu preview"
                 style={{
                   position: 'absolute',
                   inset: 0,
@@ -381,49 +415,46 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
             ) : (
               <div className="camera-preview"></div>
             )}
-            
+
             {!isUploading && !isInitializing && !preview && <div className="scan-line"></div>}
-            
+
             <div className="camera-ui" style={{ position: 'relative', zIndex: 10 }}>
-              <div className={`camera-btn ${isUploading || !isAuthenticated ? 'disabled' : ''}`}
-                   onClick={isUploading ? undefined : (preview ? handleRetake : handleScanClick)}>
-                <i className={isInitializing ? "ri-loader-4-line" : isUploading ? "ri-loader-4-line" : (!isAuthenticated ? "ri-lock-line" : (preview ? "ri-refresh-line" : "ri-camera-fill"))}
-                   style={{ animation: (isInitializing || isUploading) ? 'spin 1s linear infinite' : 'none' }}></i>
+              <div className={`camera-btn ${isUploading || (!isAuthenticated && !isAnonymousMode) ? 'disabled' : ''}`}
+                onClick={isUploading ? undefined : (preview ? handleRetake : handleScanClick)}>
+                <i className={isInitializing ? "ri-loader-4-line" : isUploading ? "ri-loader-4-line" : ((!isAuthenticated && !isAnonymousMode) ? "ri-lock-line" : (preview ? "ri-refresh-line" : "ri-camera-fill"))}
+                  style={{ animation: (isInitializing || isUploading) ? 'spin 1s linear infinite' : 'none' }}></i>
               </div>
               <div className="camera-text">
-                {isUploading ? 'Processing...' : isInitializing ? 'Initializing camera...' : !isAuthenticated ? 'Sign in required' : preview ? 'Tap to retake' : 'Tap to Scan Menu'}
+                {isUploading ? 'Processing...' : isInitializing ? 'Initializing camera...' : (!isAuthenticated && !isAnonymousMode) ? 'Sign in required' : preview ? 'Tap to retake' : 'Tap to Scan Menu'}
               </div>
             </div>
           </div>
-          
+
           {/* OR Divider */}
           <div className="or-divider">
             <span>OR</span>
           </div>
-          
-          {/* Sign In Button or Choose File Button */}
+
+          {/* Choose File Button - Always visible, triggers popup if needed */}
           <div className="form-group" style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
-            {!isAuthenticated ? (
-              <button
-                type="button"
-                onClick={handleSignInClick}
-                className="btn-block"
-                style={{ backgroundColor: '#2C3E2E', color: 'white' }}
-              >
-                <i className="ri-user-add-line"></i> Sign In to Upload
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn-outline"
-                disabled={isUploading}
-              >
-                <i className="ri-upload-2-line"></i> Choose File
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (!isAuthenticated && !isAnonymousMode) {
+                  if (onShowAnonymousPopup) {
+                    onShowAnonymousPopup()
+                  }
+                  return
+                }
+                fileInputRef.current?.click()
+              }}
+              className="btn-outline"
+              disabled={isUploading}
+            >
+              <i className="ri-upload-2-line"></i> Choose File
+            </button>
           </div>
-          
+
           {/* Hidden File Input */}
           <input
             ref={fileInputRef}
@@ -433,9 +464,9 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
             style={{ display: 'none' }}
             id="menu-upload"
           />
-          
+
           {/* Bottom Action */}
-          {preview && isAuthenticated && (
+          {preview && (isAuthenticated || isAnonymousMode) && (
             <div className="cta-container">
               <button
                 onClick={handleUpload}
@@ -453,7 +484,7 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
                   </>
                 )}
               </button>
-              
+
               {/* Disclaimer */}
               <div style={{
                 marginTop: '24px',
@@ -467,13 +498,13 @@ export default function MenuUpload({ restaurantSlug, onUploadSuccess, onUploadEr
                 textAlign: 'center'
               }}>
                 <i className="ri-alert-line" style={{ marginRight: '4px', fontSize: '14px' }}></i>
-                <strong>Disclaimer:</strong> Uploading erroneous, misleading, or false menu information is strictly prohibited. 
+                <strong>Disclaimer:</strong> Uploading erroneous, misleading, or false menu information is strictly prohibited.
                 As stated in our{' '}
-                <a 
-                  href="/terms" 
+                <a
+                  href="/terms"
                   target="_blank"
-                  style={{ 
-                    color: '#B45309', 
+                  style={{
+                    color: '#B45309',
                     textDecoration: 'underline',
                     fontWeight: '600'
                   }}

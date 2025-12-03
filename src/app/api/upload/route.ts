@@ -7,7 +7,6 @@ import { ocrSpaceV2Service } from '@/lib/ocr-space-v2'
 import { combinedOCRService } from '@/lib/combined-ocr'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
-import { processImageWithAutoCrop } from '@/lib/auto-crop-server'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -30,74 +29,97 @@ export async function POST(request: NextRequest) {
   })
   
   try {
-    // Verify authentication using Clerk
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
+    // Check if this is an anonymous upload request
+    const isAnonymousUpload = request.headers.get('x-anonymous-upload') === 'true'
     
-    logUpload('Authentication verification started', {
-      operation: 'auth_verification_start',
+    logUpload('Upload type determined', {
+      operation: 'upload_type_determined',
       requestId,
-      hasAuthHeader: !!authHeader,
-      hasToken: !!token
+      isAnonymous: isAnonymousUpload
     })
     
     let userId: string | null = null
     
-    if (token) {
-      // Verify Clerk JWT token
-      try {
-        // Import Clerk's verifyToken function
-        const { verifyToken } = await import('@clerk/backend')
-        
-        const payload = await verifyToken(token, {
-          jwtKey: process.env.CLERK_SECRET_KEY,
-        })
-        
-        if (payload && payload.sub) {
-          userId = payload.sub
-          logUpload('Clerk JWT token verification successful', {
-            operation: 'clerk_jwt_auth_success',
-            requestId,
-            userId
+    if (!isAnonymousUpload) {
+      // Verify authentication using Clerk (only for authenticated uploads)
+      const authHeader = request.headers.get('authorization')
+      const token = authHeader?.replace('Bearer ', '')
+      
+      logUpload('Authentication verification started', {
+        operation: 'auth_verification_start',
+        requestId,
+        hasAuthHeader: !!authHeader,
+        hasToken: !!token
+      })
+      
+      if (token) {
+        // Verify Clerk JWT token
+        try {
+          // Import Clerk's verifyToken function
+          const { verifyToken } = await import('@clerk/backend')
+          
+          const payload = await verifyToken(token, {
+            jwtKey: process.env.CLERK_SECRET_KEY,
           })
-        } else {
-          throw new Error('Invalid token payload')
+          
+          if (payload && payload.sub) {
+            userId = payload.sub
+            logUpload('Clerk JWT token verification successful', {
+              operation: 'clerk_jwt_auth_success',
+              requestId,
+              userId
+            })
+          } else {
+            throw new Error('Invalid token payload')
+          }
+        } catch (error) {
+          logUpload('Clerk JWT token verification failed', {
+            operation: 'clerk_jwt_auth_failed',
+            requestId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+          
+          return NextResponse.json(
+            { error: 'Invalid or expired authentication token' },
+            { status: 401 }
+          )
         }
-      } catch (error) {
-        logUpload('Clerk JWT token verification failed', {
-          operation: 'clerk_jwt_auth_failed',
-          requestId,
-          error: error instanceof Error ? error.message : String(error)
-        })
-        
-        return NextResponse.json(
-          { error: 'Invalid or expired authentication token' },
-          { status: 401 }
-        )
+      } else {
+        // Try to get user from Clerk session
+        try {
+          // Import Clerk's auth function for server-side
+          const { auth } = await import('@clerk/nextjs/server')
+          
+          const { userId: clerkUserId } = await auth()
+          
+          if (clerkUserId) {
+            userId = clerkUserId
+            logUpload('Clerk session authentication successful', {
+              operation: 'clerk_session_auth_success',
+              requestId,
+              userId
+            })
+          } else {
+            throw new Error('No active Clerk session')
+          }
+        } catch (error) {
+          logUpload('Clerk session authentication failed', {
+            operation: 'clerk_session_auth_failed',
+            requestId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+          
+          return NextResponse.json(
+            { error: 'Authentication required. Please sign in to upload photos.' },
+            { status: 401 }
+          )
+        }
       }
-    } else {
-      // Try to get user from Clerk session
-      try {
-        // Import Clerk's auth function for server-side
-        const { auth } = await import('@clerk/nextjs/server')
-        
-        const { userId: clerkUserId } = await auth()
-        
-        if (clerkUserId) {
-          userId = clerkUserId
-          logUpload('Clerk session authentication successful', {
-            operation: 'clerk_session_auth_success',
-            requestId,
-            userId
-          })
-        } else {
-          throw new Error('No active Clerk session')
-        }
-      } catch (error) {
-        logUpload('Clerk session authentication failed', {
-          operation: 'clerk_session_auth_failed',
-          requestId,
-          error: error instanceof Error ? error.message : String(error)
+
+      if (!userId) {
+        logUpload('No valid authentication found', {
+          operation: 'no_auth_found',
+          requestId
         })
         
         return NextResponse.json(
@@ -105,18 +127,11 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         )
       }
-    }
-
-    if (!userId) {
-      logUpload('No valid authentication found', {
-        operation: 'no_auth_found',
+    } else {
+      logUpload('Processing anonymous upload', {
+        operation: 'anonymous_upload',
         requestId
       })
-      
-      return NextResponse.json(
-        { error: 'Authentication required. Please sign in to upload photos.' },
-        { status: 401 }
-      )
     }
     // Check if this is a JSON request (base64 upload) or form data (file upload)
     const contentType = request.headers.get('content-type') || ''
@@ -222,36 +237,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Failed to convert file: ${bufferError instanceof Error ? bufferError.message : 'Unknown error'}`)
     }
 
-    // Apply auto-cropping to the image
-    console.log(`[Upload API] Starting auto-cropping process:`, { 
-      originalSize: buffer.length,
-      fileName: file.name,
-      requestId 
-    })
-
-    let croppedBuffer: Buffer
-    try {
-      // Process image with auto-cropping
-      croppedBuffer = await processImageWithAutoCrop(buffer, file.type)
-      
-      console.log(`[Upload API] Auto-cropping completed:`, { 
-        originalSize: buffer.length,
-        croppedSize: croppedBuffer.length,
-        sizeChange: croppedBuffer.length - buffer.length,
-        fileName: file.name,
-        requestId 
-      })
-      
-      // Use the cropped buffer for further processing
-      buffer = croppedBuffer
-    } catch (cropError) {
-      console.error(`[Upload API] Auto-cropping failed, using original image:`, { 
-        error: cropError instanceof Error ? cropError.message : String(cropError),
-        fileName: file.name,
-        requestId 
-      })
-      // Continue with original buffer if auto-cropping fails
-    }
+    // Edge detection algorithm has been removed - using original image
     
     // Create a timestamp-based filename
     const timestamp = photoTakenAt || new Date().toISOString()
@@ -368,8 +354,11 @@ export async function POST(request: NextRequest) {
       restaurant_id: restaurantId,
       storage_path: filePath,
       mime: file.type,
-      status: 'ocr_pending'
+      status: 'ocr_pending',
+      is_anonymous: isAnonymousUpload
     }
+    
+    // Only set uploaded_by for authenticated users
     if (isUuid(userId)) {
       uploadPayload.uploaded_by = userId
     }
@@ -378,6 +367,7 @@ export async function POST(request: NextRequest) {
       restaurant_id: restaurantId, 
       storage_path: filePath,
       uploaded_by_uuid: isUuid(userId) ? userId : null,
+      is_anonymous: isAnonymousUpload,
       mime: file.type,
       status: 'ocr_pending',
       requestId,
