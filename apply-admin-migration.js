@@ -28,6 +28,8 @@ async function applyMigration() {
 
         if (error) {
             console.log('ℹ️  exec_sql RPC failed or not available, trying direct execution...')
+            console.log('Error details:', error.message)
+
             // Fallback: Split and execute
             const statements = sql
                 .split(';')

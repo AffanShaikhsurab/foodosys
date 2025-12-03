@@ -1,17 +1,8 @@
 -- Migration: Add 'admin' to allowed roles in user_profiles
--- This migration updates the check constraint for the role column
+-- Simplified to avoid DO blocks which might fail in some RPC implementations
 
-DO $$
-BEGIN
-    -- Drop the existing constraint
-    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'user_profiles_role_check' AND table_name = 'user_profiles') THEN
-        ALTER TABLE user_profiles DROP CONSTRAINT user_profiles_role_check;
-    END IF;
+ALTER TABLE user_profiles DROP CONSTRAINT IF EXISTS user_profiles_role_check;
 
-    -- Add the new constraint including 'admin'
-    ALTER TABLE user_profiles ADD CONSTRAINT user_profiles_role_check CHECK (role IN ('trainee', 'employee', 'admin'));
-    
-    -- Also update the comment if possible (optional)
-    COMMENT ON COLUMN user_profiles.role IS 'User role: trainee, employee, or admin';
-    
-END $$;
+ALTER TABLE user_profiles ADD CONSTRAINT user_profiles_role_check CHECK (role IN ('trainee', 'employee', 'admin'));
+
+COMMENT ON COLUMN user_profiles.role IS 'User role: trainee, employee, or admin';
