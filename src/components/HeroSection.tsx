@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { LeaderboardButton } from './Leaderboard'
 
 interface HeroSectionProps {
   location: any
@@ -8,12 +9,26 @@ interface HeroSectionProps {
   requestLocation: () => void
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good Morning,'
+  if (hour < 17) return 'Good Afternoon,'
+  return 'Good Evening,'
+}
+
+function getMealQuestion(): string {
+  const hour = new Date().getHours()
+  if (hour < 11) return "What's for Breakfast?"
+  if (hour < 16) return "What's for Lunch?"
+  return "What's for Dinner?"
+}
+
 export default function HeroSection({ location, isLoading, requestLocation }: HeroSectionProps) {
   const [locationText, setLocationText] = useState('Getting location...')
 
   useEffect(() => {
     if (location && !location.error) {
-      setLocationText('Current Location')
+      setLocationText('Infosys Mysore')
     } else if (location?.error) {
       if (location.error.includes('permission denied')) {
         setLocationText('Location disabled')
@@ -21,7 +36,7 @@ export default function HeroSection({ location, isLoading, requestLocation }: He
         setLocationText('Location unavailable')
       }
     } else {
-      setLocationText('Detecting location...')
+      setLocationText('Detecting...')
     }
   }, [location])
 
@@ -59,65 +74,87 @@ export default function HeroSection({ location, isLoading, requestLocation }: He
   }
 
   return (
-    <section className="hero-section">
-      {/* Location Bar */}
-      <div className="location-bar" onClick={handleLocationClick}>
-        <div className="location-icon">
+    <section className="header-section">
+      {/* Top Bar: Location Left, Leaderboard Right */}
+      <div className="top-bar-new">
+        {/* Location Pill */}
+        <div className="location-pill click-active" onClick={handleLocationClick}>
           <i className="ri-map-pin-line"></i>
-        </div>
-        <div className="location-text">
-          <div className="location-label">Deliver to</div>
-          <div className={`location-value ${location?.error && location.error.includes('permission denied') ? 'disabled' : ''}`}>
-            {isLoading ? (
-              <span className="location-loading">
-                <i className="ri-loader-4-line animate-spin"></i>
-                Detecting location...
-              </span>
-            ) : (
-              <>
-                {location?.error && location.error.includes('permission denied') && (
-                  <i className="ri-error-warning-line" style={{ marginRight: '6px' }}></i>
-                )}
-                {locationText}
-              </>
-            )}
-          </div>
-        </div>
-        <div className="location-arrow">
-          <i className="ri-arrow-down-s-line"></i>
-        </div>
-      </div>
-
-      <div className="status-card">
-        <div className="status-header">
-          <span className="status-pill">Live Updates</span>
-          <i className="ri-restaurant-2-line" style={{ fontSize: '20px', opacity: '0.8' }}></i>
-        </div>
-        <div className="status-main">
-          {loading ? (
-            <>
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '28px', fontWeight: '600', marginBottom: '8px' }}>
-                <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }}></i>
-                Loading...
-              </h2>
-              <p style={{ opacity: '0.85', fontSize: '15px' }}>Fetching menu data...</p>
-            </>
+          {isLoading ? (
+            <span className="location-loading-text">
+              <i className="ri-loader-4-line animate-spin"></i>
+            </span>
           ) : (
             <>
-              <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px', letterSpacing: '-0.5px' }}>
-                {menuCount} Menu{menuCount !== 1 ? 's' : ''} Live
-              </h2>
-              <p style={{ opacity: '0.85', fontSize: '15px', lineHeight: '1.5' }}>
-                {restaurantCount} food court{restaurantCount !== 1 ? 's' : ''} available.
-              </p>
+              {location?.error && location.error.includes('permission denied') && (
+                <i className="ri-error-warning-line"></i>
+              )}
+              {locationText}
             </>
           )}
         </div>
-        {/* SVG Wave decoration */}
-        <svg className="deco-line" viewBox="0 0 100 20" preserveAspectRatio="none" style={{ position: 'absolute', bottom: '20px', right: '0', width: '100%', height: '40px', opacity: '0.3', zIndex: '1' }}>
-          <path d="M0 10 Q 25 20 50 10 T 100 10" stroke="rgba(255,255,255,0.3)" strokeWidth="2" fill="none" />
-        </svg>
+
+        {/* Leaderboard Pill */}
+        <LeaderboardButton />
       </div>
+
+      {/* Hero Title */}
+      <div className="hero-title">
+        <span className="hero-greeting">{getGreeting()}</span>
+        <h1>{getMealQuestion()}</h1>
+      </div>
+
+      {/* Status Widget */}
+      <section className="status-widget click-active">
+        <div className="widget-content">
+          {loading ? (
+            <div className="hero-shimmer-container">
+              <div className="shimmer-line title"></div>
+              <div className="shimmer-line subtitle"></div>
+            </div>
+          ) : (
+            <>
+              <h2>{menuCount} of {restaurantCount} Menus Live</h2>
+              <p>Don't walk 2km to be disappointed.</p>
+            </>
+          )}
+        </div>
+        <div className="widget-action">
+          <i className="ri-fire-fill"></i>
+        </div>
+        {/* Decorative circle */}
+        <div className="widget-deco"></div>
+      </section>
+
+      <style jsx>{`
+        .hero-shimmer-container {
+          width: 100%;
+        }
+        .shimmer-line {
+          background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(255, 255, 255, 0.2) 50%,
+            rgba(255, 255, 255, 0.1) 100%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+          border-radius: 4px;
+        }
+        .shimmer-line.title {
+          height: 24px;
+          width: 80%;
+          margin-bottom: 8px;
+        }
+        .shimmer-line.subtitle {
+          height: 16px;
+          width: 60%;
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
     </section>
   )
 }

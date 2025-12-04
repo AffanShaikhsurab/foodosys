@@ -1,0 +1,1062 @@
+/* ================================================================
+   NEW REFERENCE DESIGN STYLES - Home Page Components
+   ================================================================ */
+
+/* -----------------------------------------------------------
+   ANIMATIONS (Delight Factors)
+   ----------------------------------------------------------- */
+
+/* Staggered Entrance for Cards */
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Breathing effect for Scan Button */
+@keyframes breathe {
+    0% {
+        transform: translateX(-50%) scale(1);
+    }
+
+    50% {
+        transform: translateX(-50%) scale(1.05);
+    }
+
+    100% {
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+/* Ripple Ring for Scan Button */
+@keyframes ripple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 235, 102, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 15px rgba(220, 235, 102, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 235, 102, 0);
+    }
+}
+
+/* Pulsing dot animation */
+@keyframes pulse-dot {
+    0% {
+        box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(46, 125, 50, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
+    }
+}
+
+/* Spin animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Shimmer loading animation */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Click Feedback (Tactile Pop) */
+.click-active:active {
+    transform: scale(0.96);
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* -----------------------------------------------------------
+   HEADER SECTION (New Design)
+   ----------------------------------------------------------- */
+.header-section {
+    padding: 24px 20px 10px;
+}
+
+.top-bar-new {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.location-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-sm);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    border: 1px solid rgba(44, 62, 46, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.location-pill:hover {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.location-pill i {
+    font-size: 16px;
+}
+
+.location-loading-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hero-title {
+    margin-bottom: 20px;
+}
+
+.hero-title h1 {
+    font-size: 28px;
+    line-height: 1.1;
+    margin-bottom: 4px;
+    color: var(--primary-dark);
+    letter-spacing: -0.5px;
+}
+
+.hero-greeting {
+    font-size: 16px;
+    color: var(--text-muted);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 4px;
+}
+
+/* -----------------------------------------------------------
+   STATUS WIDGET (New Design)
+   ----------------------------------------------------------- */
+.status-widget {
+    margin: 0 0 20px 0;
+    background: var(--primary-dark);
+    color: var(--text-on-dark);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(44, 62, 46, 0.3);
+    animation: slideUpFade 0.6s ease-out;
+}
+
+.widget-content h2 {
+    color: var(--accent-lime);
+    font-size: 20px;
+    margin-bottom: 4px;
+    font-weight: 700;
+}
+
+.widget-content p {
+    font-size: 13px;
+    opacity: 0.8;
+    font-weight: 400;
+}
+
+.widget-action {
+    background: rgba(255, 255, 255, 0.1);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--accent-lime);
+    flex-shrink: 0;
+}
+
+.widget-deco {
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(220, 235, 102, 0.1);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* -----------------------------------------------------------
+   DIETARY TOGGLE BUTTONS (New Design)
+   ----------------------------------------------------------- */
+.toggle-container {
+    display: flex;
+    padding: 0 20px;
+    margin-bottom: 20px;
+    gap: 10px;
+    animation: slideUpFade 0.7s ease-out;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 16px;
+    border: none;
+    background: rgba(255, 255, 255, 0.5);
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.toggle-btn.active {
+    background: var(--primary-dark);
+    color: white;
+    box-shadow: 0 4px 10px rgba(44, 62, 46, 0.2);
+}
+
+.toggle-btn.veg.active {
+    background: #2E7D32;
+}
+
+.toggle-btn.nonveg.active {
+    background: #C62828;
+}
+
+/* -----------------------------------------------------------
+   MESS CARDS (New Design)
+   ----------------------------------------------------------- */
+.card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 20px;
+    padding-bottom: 120px;
+}
+
+.mess-card {
+    background: #F4F9F4;
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    box-shadow: 0 4px 15px rgba(44, 62, 46, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: slideUpFade 0.8s ease-out forwards;
+    opacity: 0;
+    border: 1px solid rgba(44, 62, 46, 0.03);
+    cursor: pointer;
+}
+
+.mess-card:active {
+    transform: scale(0.97);
+}
+
+.mess-card.missing {
+    border: 2px dashed #D1D5DB;
+    background: #FAFAFA;
+}
+
+.card-top {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.card-img {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    background-color: var(--bg-subtle);
+    flex-shrink: 0;
+}
+
+.card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    gap: 8px;
+}
+
+.mess-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.mess-name.muted {
+    color: var(--text-muted);
+}
+
+.walk-badge {
+    background: var(--bg-subtle);
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.location-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.menu-snippet {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--primary-dark);
+    line-height: 1.4;
+    transition: background 0.2s;
+}
+
+.mess-card:active .menu-snippet {
+    background: #E8F5E9;
+}
+
+.mess-card.missing .menu-snippet {
+    background: #FFEBEE;
+}
+
+.menu-snippet strong {
+    font-weight: 700;
+}
+
+.menu-snippet i {
+    margin-right: 6px;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-indicator.live {
+    color: #2E7D32;
+}
+
+.status-indicator .dot {
+    width: 8px;
+    height: 8px;
+    background: #2E7D32;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px #E8F5E9;
+    animation: pulse-dot 2s infinite;
+}
+
+.time-ago {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.upload-cta-small {
+    background: var(--primary-dark);
+    color: white;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-cta-small:hover {
+    background: var(--primary-light);
+}
+
+.card-arrow {
+    font-size: 24px;
+    color: var(--primary-light);
+    opacity: 0.5;
+}
+
+/* Loading State for Cards */
+.loading-card {
+    background: #F4F9F4;
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+    animation: slideUpFade 0.5s ease-out;
+}
+
+.loading-shimmer {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    flex-shrink: 0;
+}
+
+.loading-content-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.shimmer-line {
+    height: 16px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* -----------------------------------------------------------
+   FLOATING DOCK NAVIGATION (New Design)
+   ----------------------------------------------------------- */
+.dock-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    z-index: 100;
+}
+
+.floating-dock {
+    background: var(--primary-dark);
+    height: 72px;
+    border-radius: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+    box-shadow: var(--shadow-float);
+    position: relative;
+}
+
+.floating-dock .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    text-decoration: none;
+    gap: 4px;
+    width: 50px;
+    transition: color 0.2s;
+}
+
+.floating-dock .nav-item i {
+    font-size: 24px;
+    transition: transform 0.2s;
+}
+
+.floating-dock .nav-item:active i {
+    transform: scale(0.8);
+}
+
+.floating-dock .nav-item span {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.floating-dock .nav-item.active {
+    color: var(--accent-lime);
+}
+
+/* SCAN FAB (Floating Action Button) */
+.dock-fab {
+    position: absolute;
+    left: 50%;
+    top: -25px;
+    transform: translateX(-50%);
+    width: 64px;
+    height: 64px;
+    background: var(--accent-lime);
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-dark);
+    border: 5px solid var(--bg-body);
+    cursor: pointer;
+    text-decoration: none;
+    animation: breathe 3s ease-in-out infinite;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.dock-fab::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    animation: ripple 2s infinite;
+    z-index: -1;
+}
+
+.dock-fab:active {
+    transform: translateX(-50%) scale(0.9);
+    animation: none;
+}
+
+.dock-fab i {
+    font-size: 26px;
+    margin-bottom: -2px;
+}
+
+.dock-fab span {
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.signed-in-dot {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    background-color: var(--accent-lime);
+    height: 8px;
+    width: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--primary-dark);
+    z-index: 10;
+}
+
+/* -----------------------------------------------------------
+   LOCATION PERMISSION PROMPT (Enhanced)
+   ----------------------------------------------------------- */
+.location-prompt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    backdrop-filter: blur(4px);
+}
+
+.location-permission-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 32px 24px;
+    max-width: 340px;
+    width: 90%;
+    z-index: 1000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    animation: slideUpFade 0.3s ease-out;
+}
+
+.popup-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.popup-close:hover {
+    color: #4b5563;
+}
+
+.popup-icon-container {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--primary-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--accent-lime);
+    position: relative;
+    z-index: 2;
+}
+
+.popup-ripple {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--accent-lime);
+    border-radius: 50%;
+    animation: ripple 2s infinite;
+    opacity: 0.5;
+}
+
+.popup-ripple.delay-1 {
+    animation-delay: 0.5s;
+}
+
+.location-permission-popup h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 12px;
+}
+
+.location-permission-popup p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.popup-btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary-dark);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.popup-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(44, 62, 46, 0.3);
+}
+
+.popup-btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.popup-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.popup-btn-secondary {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.popup-btn-secondary:hover {
+    color: var(--primary-dark);
+}
+
+.popup-error {
+    font-size: 12px;
+    color: #C62828;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* -----------------------------------------------------------
+   MODAL STYLES (Generic)
+   ----------------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 32px 24px;
+    max-width: 320px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUpFade 0.3s ease-out;
+}
+
+.modal-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--accent-lime);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 32px;
+}
+
+.modal-content h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 8px;
+}
+
+.modal-content p {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.modal-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--primary-dark);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.modal-btn:hover {
+    background: var(--primary-light);
+}
+
+/* Leaderboard Button (From Reference) */
+.leaderboard-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FFF8E1;
+    color: #B45309;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid rgba(180, 83, 9, 0.1);
+    transition: all 0.2s ease;
+}
+
+.leaderboard-pill:hover {
+    background: #FFECB3;
+}
+
+.leaderboard-pill i {
+    font-size: 16px;
+}
+
+/* Animate spin utility */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+/* ================================================================
+   CARD EXPANSION ANIMATION (Liquid Motion)
+   ================================================================ */
+
+/* The "Ghost Card" that expands from card to full page */
+.ghost-card {
+    position: fixed;
+    z-index: 999;
+    background: var(--bg-body);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    transform-origin: top left;
+    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy ease */
+    pointer-events: none;
+}
+
+/* When expanded, the ghost fills the screen */
+.ghost-card.expanded {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    pointer-events: auto;
+}
+
+/* Expanded card image becomes hero */
+.ghost-card.expanded .card-img {
+    width: 100%;
+    height: 300px;
+    border-radius: 0 0 30px 30px;
+    margin-bottom: 20px;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Close button for expanded card */
+.close-details-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    border: none;
+    z-index: 1001;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease 0.4s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-dark);
+}
+
+.ghost-card.expanded .close-details-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Details content that fades in after expansion */
+.details-content {
+    opacity: 0;
+    pointer-events: none;
+    padding: 20px;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s;
+}
+
+.ghost-card.expanded .details-content {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* ================================================================
+   QR SCANNER OVERLAY & ANIMATIONS
+   ================================================================ */
+
+/* Scanning line movement */
+@keyframes scanMove {
+    0% {
+        top: 0;
+    }
+    50% {
+        top: 100%;
+    }
+    100% {
+        top: 0;
+}
+}
+
+/* Scan overlay that appears when scan button is clicked */
+.scan-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 201;
+    pointer-events: none;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-dark);
+    background: var(--bg-body);
+    transition: opacity 0.3s ease 0.4s;
+}
+
+.scan-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* QR Scanning frame */
+.scan-frame {
+    width: 280px;
+    height: 280px;
+    border: 4px solid rgba(44, 62, 46, 0.3);
+    border-radius: 30px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Animated scanning line */
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--primary-dark);
+    box-shadow: 0 0 20px var(--primary-dark);
+    animation: scanMove 2s infinite ease-in-out;
+}
+
+/* Corner decorations for scan frame */
+.scan-corner {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--accent-lime);
+}
+
+.scan-corner-tl {
+    top: -2px;
+    left: -2px;
+    border-right: none;
+    border-bottom: none;
+    border-radius: 30px 0 0 0;
+}
+
+.scan-corner-tr {
+    top: -2px;
+    right: -2px;
+    border-left: none;
+    border-bottom: none;
+    border-radius: 0 30px 0 0;
+}
+
+.scan-corner-bl {
+    bottom: -2px;
+    left: -2px;
+    border-right: none;
+    border-top: none;
+    border-radius: 0 0 0 30px;
+}
+
+.scan-corner-br {
+    bottom: -2px;
+    right: -2px;
+    border-left: none;
+    border-top: none;
+    border-radius: 0 0 30px 0;
+}
+
+/* ================================================================
+   SCAN BUTTON EXPANSION ANIMATION
+   ================================================================ */
+
+/* State: Scanning Active - Button expands to cover screen */
+.dock-fab.scanning {
+    transform: translateX(-50%) scale(50);
+    border-radius: 50%;
+    border: none;
+    cursor: default;
+    animation: none;
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.4s ease;
+}
+
+.dock-fab.scanning i,
+.dock-fab.scanning span {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.dock-fab.scanning::after {
+    display: none;
+}
+
+/* Hide dock when scanning */
+.dock-container.hidden {
+    transform: translateX(-50%) translateY(200%);
+    transition: transform 0.4s ease;
+}

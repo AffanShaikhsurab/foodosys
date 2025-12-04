@@ -95,8 +95,8 @@ export function getMealType(timestamp: string | null | undefined): 'Breakfast' |
  * @param menuImages - Array of menu images
  * @returns Object with meal types as keys and arrays of menu images as values
  */
-export function groupImagesByMealType(menuImages: Array<{ photo_taken_at?: string | null; created_at: string }>): Record<string, Array<any>> {
-  const grouped: Record<string, Array<any>> = {
+export function groupImagesByMealType(menuImages: Array<{ photo_taken_at?: string | null; created_at: string }>): Record<string, Array<{ photo_taken_at?: string | null; created_at: string }>> {
+  const grouped: Record<string, Array<{ photo_taken_at?: string | null; created_at: string }>> = {
     'Breakfast': [],
     'Lunch': [],
     'Dinner': []
@@ -111,8 +111,8 @@ export function groupImagesByMealType(menuImages: Array<{ photo_taken_at?: strin
   return grouped
 }
 
-export function groupImagesByDate(menuImages: Array<{ photo_taken_at?: string | null; created_at: string }>): Record<string, Array<any>> {
-  const grouped: Record<string, Array<any>> = {}
+export function groupImagesByDate(menuImages: Array<{ photo_taken_at?: string | null; created_at: string }>): Record<string, Array<{ photo_taken_at?: string | null; created_at: string }>> {
+  const grouped: Record<string, Array<{ photo_taken_at?: string | null; created_at: string }>> = {}
 
   menuImages.forEach(image => {
     const timestamp = getEffectiveTimestamp(image)

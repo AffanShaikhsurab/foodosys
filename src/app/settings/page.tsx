@@ -35,7 +35,7 @@ export default function ProfilePage() {
   const [userBadges, setUserBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  
+
   const { user, isLoaded } = useUser()
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function ProfilePage() {
 
         // Fetch user profile from API
         const profileResponse = await fetch('/api/profile')
-        
+
         if (!profileResponse.ok) {
           if (profileResponse.status === 404) {
             // Profile doesn't exist, redirect to onboarding
@@ -70,7 +70,7 @@ export default function ProfilePage() {
             const { contributions } = await contributionsResponse.json()
             const uploads = contributions?.filter((c: any) => c.contribution_type === 'upload').length || 0
             const helps = contributions?.length || 0
-            
+
             // Get user rank from leaderboard
             const leaderboardResponse = await fetch('/api/leaderboard')
             if (leaderboardResponse.ok) {
@@ -112,7 +112,7 @@ export default function ProfilePage() {
 
   const getLevelIcon = () => {
     if (!userProfile) return 'ri-medal-fill'
-    
+
     switch (userProfile.level) {
       case 5: return 'ri-vip-crown-fill'
       case 4: return 'ri-trophy-fill'
@@ -124,7 +124,7 @@ export default function ProfilePage() {
 
   const getNextLevelPoints = () => {
     if (!userProfile) return 0
-    
+
     switch (userProfile.level) {
       case 1: return 500
       case 2: return 1000
@@ -137,23 +137,23 @@ export default function ProfilePage() {
 
   const getProgressPercentage = () => {
     if (!userProfile) return 0
-    
-    const currentLevelMin = userProfile.level <= 1 ? 0 : 
-                          userProfile.level <= 2 ? 500 :
-                          userProfile.level <= 3 ? 1000 :
-                          userProfile.level <= 4 ? 1500 : 2000
-                          
+
+    const currentLevelMin = userProfile.level <= 1 ? 0 :
+      userProfile.level <= 2 ? 500 :
+        userProfile.level <= 3 ? 1000 :
+          userProfile.level <= 4 ? 1500 : 2000
+
     const nextLevelPoints = getNextLevelPoints()
     const pointsInCurrentLevel = userProfile.karma_points - currentLevelMin
     const pointsNeededForNextLevel = nextLevelPoints - currentLevelMin
-    
+
     if (userProfile.level >= 5) return 100
     return Math.min(100, Math.round((pointsInCurrentLevel / pointsNeededForNextLevel) * 100))
   }
 
   const getLevelName = () => {
     if (!userProfile) return 'Beginner'
-    
+
     switch (userProfile.level) {
       case 5: return 'Mess Legend'
       case 4: return 'Food Expert'
@@ -165,13 +165,13 @@ export default function ProfilePage() {
 
   const getPointsToNextLevel = () => {
     if (!userProfile) return 0
-    
+
     const nextLevelPoints = getNextLevelPoints()
     return Math.max(0, nextLevelPoints - userProfile.karma_points)
   }
 
   const { signOut } = useClerk()
-  
+
   const handleSignOut = async () => {
     try {
       await signOut()
@@ -289,9 +289,9 @@ export default function ProfilePage() {
       {/* Hero Section */}
       <div className="profile-hero">
         <div className="avatar-container">
-          <img 
-            src={userProfile.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"} 
-            className="avatar" 
+          <img
+            src={userProfile.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"}
+            className="avatar"
             alt="User Photo"
           />
           <div className="level-badge">
@@ -299,7 +299,25 @@ export default function ProfilePage() {
           </div>
         </div>
         <h2 className="user-name">{userProfile.display_name}</h2>
-        <div className="user-handle">{userProfile.role} • {userProfile.base_location || 'Campus'}</div>
+        <div className="user-handle">{userProfile.role === 'admin' ? '' : `${userProfile.role} • ${userProfile.base_location || 'Campus'}`}</div>
+        {userProfile.role === 'admin' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px' }}>
+            <span style={{
+              background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+              color: 'white',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
+            }}>
+              <i className="ri-shield-star-fill"></i> Admin
+            </span>
+          </div>
+        )}
         {userProfile.dietary_preference && (
           <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14px', color: '#666' }}>
             <i className={userProfile.dietary_preference === 'vegetarian' ? 'ri-leaf-line' : 'ri-restaurant-line'}></i>
@@ -311,7 +329,7 @@ export default function ProfilePage() {
       {/* Points / Karma Card */}
       <div className="impact-card">
         <div className="impact-bg"></div>
-        
+
         <div className="points-row">
           <span className="points-val">{userProfile.karma_points.toLocaleString()}</span>
           <span className="points-label">Karma</span>
@@ -364,7 +382,7 @@ export default function ProfilePage() {
             <span className="badge-name">No badges yet</span>
           </div>
         )}
-        
+
         {/* Locked badges for preview */}
         <div className="badge-card">
           <div className="badge-icon locked">
@@ -397,7 +415,7 @@ export default function ProfilePage() {
         </a>
         <a href="#" className="menu-item" onClick={handleSignOut}>
           <div className="menu-left">
-            <i className="ri-logout-box-r-line menu-icon" style={{ color: '#FF8A80' }}></i> 
+            <i className="ri-logout-box-r-line menu-icon" style={{ color: '#FF8A80' }}></i>
             <span style={{ color: '#FF8A80' }}>Log Out</span>
           </div>
         </a>

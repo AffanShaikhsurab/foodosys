@@ -4,6 +4,7 @@ import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useClerkSupabaseClient } from '@/lib/clerk-supabase';
+import { isAdminEmail } from '@/lib/admin-config';
 
 // TypeScript interfaces for the form data
 interface OnboardingFormData {
@@ -55,10 +56,21 @@ const OnboardingForm: React.FC = () => {
     'SDB Blocks',
   ];
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated, or skip onboarding for admin
   useEffect(() => {
     if (isLoaded && !user) {
       router.push('/sign-in');
+      return;
+    }
+
+    // Skip onboarding for admin users - redirect directly to home
+    if (isLoaded && user) {
+      const userEmail = user.emailAddresses?.[0]?.emailAddress;
+      if (isAdminEmail(userEmail)) {
+        console.log('[Admin] Skipping onboarding for admin user:', userEmail);
+        router.push('/');
+        return;
+      }
     }
   }, [isLoaded, user, router]);
 
@@ -199,7 +211,7 @@ const OnboardingForm: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm() || !user) {
       return;
     }
@@ -229,7 +241,7 @@ const OnboardingForm: React.FC = () => {
           const { data } = supabase.storage
             .from('user-avatars')
             .getPublicUrl(filePath);
-          
+
           avatarUrl = data.publicUrl;
         }
       }
@@ -340,9 +352,8 @@ const OnboardingForm: React.FC = () => {
               value={formData.displayName}
               onChange={handleInputChange}
               placeholder="e.g. Rahul Kumar"
-              className={`w-full px-4.5 py-4.5 bg-bg-card rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark placeholder:text-text-muted ${
-                errors.displayName ? 'border-red-500 focus:ring-red-500/50' : ''
-              }`}
+              className={`w-full px-4.5 py-4.5 bg-bg-card rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark placeholder:text-text-muted ${errors.displayName ? 'border-red-500 focus:ring-red-500/50' : ''
+                }`}
             />
             {errors.displayName && (
               <p className="text-red-500 text-xs mt-1.5">{errors.displayName}</p>
@@ -358,11 +369,10 @@ const OnboardingForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleRoleSelection('trainee')}
-                className={`px-5 py-3 bg-bg-card rounded-3xl text-sm font-medium shadow-soft border-2 transition-all duration-200 flex items-center gap-2 ${
-                  formData.role === 'trainee'
+                className={`px-5 py-3 bg-bg-card rounded-3xl text-sm font-medium shadow-soft border-2 transition-all duration-200 flex items-center gap-2 ${formData.role === 'trainee'
                     ? 'bg-accent-lime text-primary-dark border-accent-lime font-bold'
                     : 'border-transparent text-text-muted hover:border-accent-lime/50'
-                }`}
+                  }`}
               >
                 <i className="ri-user-star-line text-base"></i>
                 Trainee
@@ -370,11 +380,10 @@ const OnboardingForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleRoleSelection('employee')}
-                className={`px-5 py-3 bg-bg-card rounded-3xl text-sm font-medium shadow-soft border-2 transition-all duration-200 flex items-center gap-2 ${
-                  formData.role === 'employee'
+                className={`px-5 py-3 bg-bg-card rounded-3xl text-sm font-medium shadow-soft border-2 transition-all duration-200 flex items-center gap-2 ${formData.role === 'employee'
                     ? 'bg-accent-lime text-primary-dark border-accent-lime font-bold'
                     : 'border-transparent text-text-muted hover:border-accent-lime/50'
-                }`}
+                  }`}
               >
                 <i className="ri-briefcase-4-line text-base"></i>
                 Employee
@@ -398,9 +407,8 @@ const OnboardingForm: React.FC = () => {
                 name="baseLocation"
                 value={formData.baseLocation}
                 onChange={handleInputChange}
-                className={`w-full px-4.5 py-4.5 bg-bg-card rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark appearance-none cursor-pointer ${
-                  errors.baseLocation ? 'border-red-500 focus:ring-red-500/50' : ''
-                }`}
+                className={`w-full px-4.5 py-4.5 bg-bg-card rounded-2xl border border-transparent shadow-soft focus:outline-none focus:ring-2 focus:ring-accent-lime/50 focus:border-accent-lime transition-all duration-200 font-sans text-base text-primary-dark appearance-none cursor-pointer ${errors.baseLocation ? 'border-red-500 focus:ring-red-500/50' : ''
+                  }`}
                 style={{
                   backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232C3E2E%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`,
                   backgroundRepeat: 'no-repeat',
@@ -430,30 +438,26 @@ const OnboardingForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDietarySelection('vegetarian')}
-                className={`bg-bg-card p-5 rounded-3xl text-center shadow-soft border-2 transition-all duration-200 cursor-pointer ${
-                  formData.dietaryPreference === 'vegetarian'
+                className={`bg-bg-card p-5 rounded-3xl text-center shadow-soft border-2 transition-all duration-200 cursor-pointer ${formData.dietaryPreference === 'vegetarian'
                     ? 'border-accent-lime bg-accent-lime/10'
                     : 'border-transparent hover:border-accent-lime/50'
-                }`}
+                  }`}
               >
                 <span className="text-3xl mb-2 block">🥗</span>
-                <span className={`font-semibold text-sm block ${
-                  formData.dietaryPreference === 'vegetarian' ? 'text-primary-dark font-bold' : 'text-text-muted'
-                }`}>Vegetarian</span>
+                <span className={`font-semibold text-sm block ${formData.dietaryPreference === 'vegetarian' ? 'text-primary-dark font-bold' : 'text-text-muted'
+                  }`}>Vegetarian</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleDietarySelection('non-veg')}
-                className={`bg-bg-card p-5 rounded-3xl text-center shadow-soft border-2 transition-all duration-200 cursor-pointer ${
-                  formData.dietaryPreference === 'non-veg'
+                className={`bg-bg-card p-5 rounded-3xl text-center shadow-soft border-2 transition-all duration-200 cursor-pointer ${formData.dietaryPreference === 'non-veg'
                     ? 'border-accent-lime bg-accent-lime/10'
                     : 'border-transparent hover:border-accent-lime/50'
-                }`}
+                  }`}
               >
                 <span className="text-3xl mb-2 block">🍗</span>
-                <span className={`font-semibold text-sm block ${
-                  formData.dietaryPreference === 'non-veg' ? 'text-primary-dark font-bold' : 'text-text-muted'
-                }`}>Non-Veg</span>
+                <span className={`font-semibold text-sm block ${formData.dietaryPreference === 'non-veg' ? 'text-primary-dark font-bold' : 'text-text-muted'
+                  }`}>Non-Veg</span>
               </button>
             </div>
             {errors.dietaryPreference && (
@@ -466,9 +470,8 @@ const OnboardingForm: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95 ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className={`w-full px-4.5 py-4.5 bg-primary-dark text-white rounded-3xl text-base font-semibold flex items-center justify-center gap-2.5 shadow-float hover:shadow-lg transition-all duration-200 active:scale-95 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
             >
               {isSubmitting ? (
                 <>Saving...</>
