@@ -51,7 +51,7 @@ export default function FilterSection({ onFilterChange }: FilterSectionProps) {
 
   return (
     <>
-      <section className="toggle-container">
+      <section className="toggle-container step-filter-section">
         <button
           className={`toggle-btn click-active ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => handleFilterClick('all')}

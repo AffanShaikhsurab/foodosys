@@ -5,6 +5,7 @@ import '../styles/auth.css'
 import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider, ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
+import { TourProvider } from './TourProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -74,9 +75,11 @@ export default function RootLayout({
             <ClerkLoadingComponent />
           </ClerkLoading>
           <ClerkLoaded>
-            <div className="app-container">
-              {children}
-            </div>
+            <TourProvider>
+              <div className="app-container">
+                {children}
+              </div>
+            </TourProvider>
           </ClerkLoaded>
           <Analytics />
         </ClerkProvider>

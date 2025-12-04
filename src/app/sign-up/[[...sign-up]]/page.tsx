@@ -3,20 +3,6 @@
 import { SignUp } from '@clerk/nextjs';
 import '../../../styles/auth.css';
 
-const localization = {
-    signUp: {
-        start: {
-            title: '',
-            subtitle: '',
-            actionText: "Already have an account?",
-            actionLink: "Sign in",
-        },
-    },
-    socialButtonsBlockButton: "Continue with {{provider|titleize}}",
-    dividerText: "or use email",
-    formButtonPrimary: "Continue",
-};
-
 export default function SignUpPage() {
     return (
         <div className="auth-page">
@@ -62,7 +48,6 @@ export default function SignUpPage() {
                     routing="path"
                     path="/sign-up"
                     signInUrl="/sign-in"
-                    localization={localization}
                 />
 
                 {/* Trust Signal */}

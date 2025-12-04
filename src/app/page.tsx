@@ -22,6 +22,24 @@ export default function Home() {
       <FilterSection />
       <CourtList userLocation={location} locationLoading={isLoading} />
       <BottomNav />
+      
+      {/* Install prompt element for tour */}
+      <div className="step-install-prompt" style={{ 
+        position: 'fixed', 
+        bottom: '100px', 
+        right: '20px', 
+        width: '40px', 
+        height: '40px', 
+        borderRadius: '50%', 
+        backgroundColor: '#DCEB66', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        zIndex: 1000,
+        opacity: 0.8
+      }}>
+        <i className="ri-download-line" style={{ color: '#1F291F', fontSize: '20px' }}></i>
+      </div>
     </>
   )
 }

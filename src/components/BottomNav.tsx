@@ -115,7 +115,7 @@ export default function BottomNav() {
 
           {/* SCAN FAB - Center Button with Smart Logic */}
           <div
-            className={`dock-fab ${isScanning ? 'scanning' : ''}`}
+            className={`dock-fab step-scan-button ${isScanning ? 'scanning' : ''}`}
             onClick={handleScanClick}
           >
             <i className="ri-qr-scan-2-line"></i>

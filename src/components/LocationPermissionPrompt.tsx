@@ -20,16 +20,22 @@ export default function LocationPermissionPrompt() {
       setShowPrompt(true)
     } else if (location && !location.error) {
       setShowPrompt(false)
+      // Dispatch event to let TourProvider know location permission was granted
+      window.dispatchEvent(new CustomEvent('locationPermissionResolved'))
     }
   }, [location, isLoading, isDismissed])
 
   const handleRequestLocation = () => {
     requestLocation()
+    // Dispatch event to let TourProvider know location permission was handled
+    window.dispatchEvent(new CustomEvent('locationPermissionResolved'))
   }
 
   const handleDismiss = () => {
     setShowPrompt(false)
     setIsDismissed(true)
+    // Dispatch event to let TourProvider know location permission was handled
+    window.dispatchEvent(new CustomEvent('locationPermissionResolved'))
   }
 
   if (!showPrompt) {

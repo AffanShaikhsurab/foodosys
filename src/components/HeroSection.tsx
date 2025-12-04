@@ -78,7 +78,7 @@ export default function HeroSection({ location, isLoading, requestLocation }: He
       {/* Top Bar: Location Left, Leaderboard Right */}
       <div className="top-bar-new">
         {/* Location Pill */}
-        <div className="location-pill click-active" onClick={handleLocationClick}>
+        <div className="location-pill step-location click-active" onClick={handleLocationClick}>
           <i className="ri-map-pin-line"></i>
           {isLoading ? (
             <span className="location-loading-text">
@@ -99,13 +99,13 @@ export default function HeroSection({ location, isLoading, requestLocation }: He
       </div>
 
       {/* Hero Title */}
-      <div className="hero-title">
+      <div className="hero-title step-hero-title">
         <span className="hero-greeting">{getGreeting()}</span>
         <h1>{getMealQuestion()}</h1>
       </div>
 
       {/* Status Widget */}
-      <section className="status-widget click-active">
+      <section className="status-widget step-status-widget click-active">
         <div className="widget-content">
           {loading ? (
             <div className="hero-shimmer-container">
@@ -115,7 +115,7 @@ export default function HeroSection({ location, isLoading, requestLocation }: He
           ) : (
             <>
               <h2>{menuCount} of {restaurantCount} Menus Live</h2>
-              <p>Don't walk 2km to be disappointed.</p>
+              <p>Don&apos;t walk 2km to be disappointed.</p>
             </>
           )}
         </div>
