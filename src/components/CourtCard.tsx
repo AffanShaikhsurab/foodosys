@@ -11,6 +11,7 @@ interface Court {
   distance: string
   status: 'available' | 'missing'
   imageUrl: string
+  heroImageUrl?: string
   slug?: string
   hasCurrentMealMenu?: boolean
   availableMealTypes?: string[]

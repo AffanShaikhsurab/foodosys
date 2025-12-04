@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import CourtCard from './CourtCard'
 import { useDistance } from '@/hooks/useDistance'
-import { getMenuAvailabilityForRestaurants } from '@/lib/menu-availability'
-import { getMealAvailabilityForRestaurants, getCurrentMealLabel, getCurrentMealIcon, RestaurantMealAvailability } from '@/lib/meal-menu-availability'
+import { getCombinedAvailability, clearAvailabilityCache, RestaurantAvailabilityInfo } from '@/lib/combined-availability'
+
+import { preloadRestaurantImages, getRestaurantThumbnailUrl, getRestaurantImageUrl } from '@/lib/image-preloader'
 
 interface Restaurant {
   id: string
@@ -135,7 +136,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [menuAvailability, setMenuAvailability] = useState<Record<string, boolean>>({})
-  const [mealAvailability, setMealAvailability] = useState<Record<string, RestaurantMealAvailability>>({})
+  const [mealAvailability, setMealAvailability] = useState<Record<string, RestaurantAvailabilityInfo>>({})
   const [menuStats, setMenuStats] = useState({ withMenus: 0, total: 0, withCurrentMealMenu: 0 })
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [transitionData, setTransitionData] = useState<{
@@ -183,10 +184,13 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
 
         // Check menu availability for all restaurants
         const restaurantIds = data.restaurants.map((r: Restaurant) => r.id)
-        const availability = await getMenuAvailabilityForRestaurants(restaurantIds)
+        const { menuAvailability: availability, mealAvailability: mealAvail } = await getCombinedAvailability(restaurantIds, forceRefresh)
 
         // Check meal-specific availability
-        const mealAvail = await getMealAvailabilityForRestaurants(restaurantIds)
+        // (Meal availability already included in combined call)
+
+        // Preload restaurant images in background for instant transitions
+        preloadRestaurantImages(restaurantIds)
 
         // Count restaurants with and without menus
         const withMenus = Object.values(availability).filter(Boolean).length
@@ -227,7 +231,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
     sessionStorage.setItem('cardTransition', JSON.stringify({
       name: court.name,
       location: court.location,
-      imageUrl: court.imageUrl,
+      imageUrl: court.heroImageUrl || court.imageUrl,
       rect: {
         top: rect.top,
         left: rect.left,
@@ -390,7 +394,8 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
                 location: restaurant.location,
                 distance: restaurant.distance,
                 status: menuAvailability[restaurant.id] ? 'available' as const : 'missing' as const,
-                imageUrl: `https://images.unsplash.com/photo-${index % 3 === 0 ? '1546069901-ba9599a7e63c' : index % 3 === 1 ? '1565299624946-b28f40a0ae38' : '1555939594-58d7cb561ad1'}?w=150&q=80`,
+                imageUrl: getRestaurantThumbnailUrl(restaurant.id),
+                heroImageUrl: getRestaurantImageUrl(restaurant.id),
                 slug: restaurant.slug,
                 hasCurrentMealMenu: mealAvailability[restaurant.id]?.hasCurrentMealMenu,
                 availableMealTypes: mealAvailability[restaurant.id]?.availableMealTypes,

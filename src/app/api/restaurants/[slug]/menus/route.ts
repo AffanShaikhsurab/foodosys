@@ -8,32 +8,35 @@ export async function GET(
 ) {
   const requestId = Math.random().toString(36).substring(7)
   const startTime = Date.now()
-  
+
   try {
     const { slug } = params
-    console.log(`[Menus API] ${requestId} Request received:`, { 
+    console.log(`[Menus API] ${requestId} Request received:`, {
       slug,
       url: request.url,
       timestamp: new Date().toISOString()
     })
-    
+
     // First get the restaurant
     console.log(`[Menus API] ${requestId} Looking up restaurant by slug:`, { slug })
-    
-    const { data: restaurant, error: restaurantError } = await (await createServerClient())
+
+    // OPTIMIZATION: Create server client ONCE and reuse for all queries
+    const supabase = await createServerClient()
+
+    const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id, name, slug')
       .eq('slug', slug)
       .single()
-    
-    console.log(`[Menus API] ${requestId} Restaurant lookup completed:`, { 
+
+    console.log(`[Menus API] ${requestId} Restaurant lookup completed:`, {
       found: !!restaurant,
       restaurantError: restaurantError?.message,
       restaurantId: (restaurant as any)?.id,
       restaurantName: (restaurant as any)?.name,
       lookupDuration: `${Date.now() - startTime}ms`
     })
-    
+
     if (restaurantError || !restaurant) {
       console.error(`[Menus API] ${requestId} Restaurant not found:`, {
         slug,
@@ -42,15 +45,15 @@ export async function GET(
       })
       throw new NotFoundError('Restaurant not found')
     }
-    
+
     // At this point, restaurant is guaranteed to exist
     const restaurantId = (restaurant as { id: string }).id
-    console.log(`[Menus API] ${requestId} Restaurant identified:`, { 
-      restaurantId, 
+    console.log(`[Menus API] ${requestId} Restaurant identified:`, {
+      restaurantId,
       slug,
       name: (restaurant as any)?.name
     })
-    
+
     // Get the menus for this restaurant (show both ocr_done and ocr_pending)
     console.log(`[Menus API] ${requestId} Building menu_images query:`, {
       restaurantId,
@@ -59,8 +62,8 @@ export async function GET(
         status: ['ocr_done', 'ocr_pending']
       }
     })
-    
-    const query = (await createServerClient())
+
+    const query = supabase
       .from('menu_images')
       .select(`
         id,
@@ -84,13 +87,13 @@ export async function GET(
       .in('status', ['ocr_done', 'ocr_pending'])
       .order('created_at', { ascending: false })
       .limit(10)
-    
+
     console.log(`[Menus API] ${requestId} Query built, about to execute`)
-    
+
     const { data, error } = await query
-    
+
     const queryDuration = Date.now() - startTime
-    console.log(`[Menus API] ${requestId} Query executed:`, { 
+    console.log(`[Menus API] ${requestId} Query executed:`, {
       duration: `${queryDuration}ms`,
       error: error?.message,
       errorCode: error?.code,
@@ -98,7 +101,7 @@ export async function GET(
       recordsReturned: data?.length || 0,
       restaurantId
     })
-    
+
     if (error) {
       console.error(`[Menus API] ${requestId} Database error:`, {
         message: error.message,
@@ -112,23 +115,23 @@ export async function GET(
     // Fetch contributor information for each menu image
     if (data && data.length > 0) {
       console.log(`[Menus API] ${requestId} Fetching contributor information for ${data.length} images`)
-      
+
       // Separate anonymous and authenticated uploads
       const authenticatedMenus = data.filter((menu: any) => !menu.is_anonymous && menu.uploaded_by)
       const uploaderIds = Array.from(new Set(authenticatedMenus.map((menu: any) => menu.uploaded_by).filter(Boolean)))
-      
+
       if (uploaderIds.length > 0) {
-        const { data: contributors, error: contributorsError } = await (await createServerClient())
+        const { data: contributors, error: contributorsError } = await supabase
           .from('user_profiles')
           .select('user_id, display_name, avatar_url')
           .in('user_id', uploaderIds)
-        
+
         if (!contributorsError && contributors) {
           // Map contributors to menu images
           const contributorMap = new Map(
             contributors.map((c: any) => [c.user_id, c])
           )
-          
+
           data.forEach((menu: any) => {
             if (menu.is_anonymous) {
               // Handle anonymous uploads
@@ -145,7 +148,7 @@ export async function GET(
               }
             }
           })
-          
+
           console.log(`[Menus API] ${requestId} Contributors mapped successfully:`, {
             contributorsFound: contributors.length,
             imagesWithContributors: data.filter((m: any) => m.contributor).length,
@@ -153,7 +156,7 @@ export async function GET(
           })
         } else {
           console.error(`[Menus API] ${requestId} Failed to fetch contributors:`, contributorsError)
-          
+
           // Fallback for anonymous uploads if contributor fetch fails
           data.forEach((menu: any) => {
             if (menu.is_anonymous) {
@@ -181,7 +184,7 @@ export async function GET(
 
     // Log detailed info about returned menus
     if (data && data.length > 0) {
-      console.log(`[Menus API] ${requestId} Menus found:`, { 
+      console.log(`[Menus API] ${requestId} Menus found:`, {
         count: data.length,
         restaurantId
       })
@@ -197,19 +200,19 @@ export async function GET(
         })
       })
     } else {
-      console.log(`[Menus API] ${requestId} No menus found:`, { 
-        restaurantId, 
+      console.log(`[Menus API] ${requestId} No menus found:`, {
+        restaurantId,
         slug,
         queryDuration: `${Date.now() - startTime}ms`
       })
     }
-    
+
     console.log(`[Menus API] ${requestId} Returning response:`, {
       menuCount: data?.length || 0,
       totalDuration: `${Date.now() - startTime}ms`,
       restaurantId
     })
-    
+
     return NextResponse.json({ menus: data || [] })
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)

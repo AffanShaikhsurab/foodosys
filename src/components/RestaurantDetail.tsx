@@ -35,7 +35,22 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   const [menus, setMenus] = useState<DisplayMenu[]>([])
   const [loading, setLoading] = useState(true)
   const [menusLoading, setMenusLoading] = useState(true)
-  const [transitionData, setTransitionData] = useState<CardTransitionData | null>(null)
+  const [transitionData, setTransitionData] = useState<CardTransitionData | null>(() => {
+    // Read transition data synchronously on first render to avoid flash
+    if (typeof window !== 'undefined') {
+      const storedData = sessionStorage.getItem('cardTransition')
+      if (storedData) {
+        try {
+          const data = JSON.parse(storedData)
+          sessionStorage.removeItem('cardTransition')
+          return data
+        } catch (e) {
+          console.error('Failed to parse transition data:', e)
+        }
+      }
+    }
+    return null
+  })
   const [error, setError] = useState<string | null>(null)
   const [helpfulVotes, setHelpfulVotes] = useState<{ [key: string]: number }>({})
   const [userVotes, setUserVotes] = useState<{ [key: string]: 'helpful' | 'wrong' | null }>({})
@@ -48,23 +63,14 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   const touchStartX = useRef<number>(0)
   const touchStartY = useRef<number>(0)
 
-  useEffect(() => {
-    const storedData = sessionStorage.getItem('cardTransition')
-    if (storedData) {
-      try {
-        setTransitionData(JSON.parse(storedData))
-        sessionStorage.removeItem('cardTransition')
-      } catch (e) {
-        console.error('Failed to parse transition data:', e)
-      }
-    }
-  }, [])
+  // Transition data is now read synchronously in useState initializer above
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const restaurantsData = await apiClient.getRestaurants()
-        const foundRestaurant = restaurantsData.restaurants.find((r: Restaurant) => r.slug === params.slug)
+        // OPTIMIZATION: Fetch single restaurant by slug instead of ALL restaurants
+        const restaurantsData = await apiClient.getRestaurantBySlug(params.slug)
+        const foundRestaurant = restaurantsData.restaurant
 
         if (!foundRestaurant) {
           setError('Restaurant not found')
@@ -87,8 +93,6 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         setHelpfulVotes(initialVotes)
         setUserVotes(initialUserVotes)
 
-        const adminStatus = user?.publicMetadata?.role === 'admin' || false
-        setIsAdminUser(adminStatus)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data')
       } finally {
@@ -97,7 +101,14 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
     }
 
     fetchData()
-  }, [params.slug, user])
+  }, [params.slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: Removed `user` from deps - Clerk's user object changes reference frequently causing excessive API calls
+
+  // Separate effect for admin status - uses stable primitive values instead of object reference
+  useEffect(() => {
+    const adminStatus = user?.publicMetadata?.role === 'admin' || false
+    setIsAdminUser(adminStatus)
+  }, [user?.id, user?.publicMetadata?.role])
 
   const handleVote = (menuId: string, voteType: 'helpful' | 'wrong') => {
     if (userVotes[menuId] === voteType) {
@@ -185,7 +196,9 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
     )
   }
 
-  if (error || !restaurant) {
+  // Only show error state when loading is complete AND there's an actual error
+  // AND we don't have transition data to display (prevents flash of "not found")
+  if (!loading && (error || !restaurant) && !transitionData) {
     return (
       <div className="app-container">
         <div className="p-4">
