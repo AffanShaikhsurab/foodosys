@@ -8,6 +8,7 @@ import { ClerkProvider, ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
 import { TourProvider } from './TourProvider'
 import { TransitionProvider } from '@/context/TransitionContext'
 import { getAllImageUrls } from '@/lib/image-preloader'
+import FeedbackButton from '@/components/FeedbackButton'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -86,6 +87,7 @@ export default function RootLayout({
                   {children}
                 </div>
               </TourProvider>
+              <FeedbackButton />
             </TransitionProvider>
           </ClerkLoaded>
           <Analytics />
