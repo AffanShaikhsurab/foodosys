@@ -10,6 +10,8 @@ import RestaurantImageViewer from '@/components/RestaurantImageViewer'
 import { useUser } from '@clerk/nextjs'
 import { getRestaurantImageUrl } from '@/lib/image-preloader'
 import { getStaticRestaurantBySlug, StaticRestaurantData } from '@/lib/data-cache'
+import { useTransition } from '@/context/TransitionContext'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
 
 interface DisplayMenu extends MenuImage {
   ocr_results?: OCRResult
@@ -33,6 +35,11 @@ interface CardTransitionData {
 export default function RestaurantDetail({ params }: { params: { slug: string } }) {
   const router = useRouter()
   const { user } = useUser()
+  const { transitionData: contextTransitionData } = useTransition()
+
+  useEffect(() => {
+    console.log('[RestaurantDetail] Mount. Context Data:', contextTransitionData)
+  }, [contextTransitionData])
 
   // Try to get cached static data first for instant rendering
   const [cachedStatic] = useState<StaticRestaurantData | null>(() => {
@@ -58,7 +65,8 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   })
   const [menus, setMenus] = useState<DisplayMenu[]>([])
   // If we have cached data, hero can render immediately - no loading state needed
-  const [loading, setLoading] = useState(() => !cachedStatic)
+  const [loading, setLoading] = useState(true)
+  const [imageLoaded, setImageLoaded] = useState(false)
   const [menusLoading, setMenusLoading] = useState(true)
   const [transitionData, setTransitionData] = useState<CardTransitionData | null>(() => {
     // Read transition data synchronously on first render to avoid flash
@@ -210,21 +218,47 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
     }
   }
 
-  // Show loading only if we have NO data sources (no cache, no transition data)
-  if (loading && !transitionData && !cachedStatic) {
+  // Show loading state until data is fetched AND image is loaded
+  // We use a hidden image to detect when the hero image is ready
+
+  // Determine the "real" image URL if available from any source
+  const dataImage = cachedStatic?.imageUrl || contextTransitionData?.imageUrl || transitionData?.imageUrl || (restaurant ? getRestaurantImageUrl(restaurant.id) : null)
+
+  // The final image we WANT to show - NO FALLBACK
+  // Only show the actual restaurant image. Keep loading screen until real data is available.
+  const heroImage = dataImage
+
+  if (loading || !imageLoaded || !heroImage) {
     return (
-      <div className="app-container">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="app-container" style={{ background: 'white', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999, position: 'fixed', top: 0, left: 0, width: '100%' }}>
+        {/* Hidden image to trigger load event - only render if we have a target image */}
+        {heroImage && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={heroImage}
+            alt="preload"
+            style={{ display: 'none' }}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(true)} // Fallback if image fails
+          />
+        )}
+
+        <div className="lottie-loading-container">
+          <DotLottieReact
+            src="/Loading-Cat.lottie"
+            loop
+            autoplay
+            style={{ width: '200px', height: '200px' }}
+          />
+          <p className="loading-text" style={{ marginTop: '20px', color: '#889287', fontWeight: 500 }}>Loading restaurant...</p>
         </div>
-        <BottomNav />
       </div>
     )
   }
 
   // Only show error state when loading is complete AND there's an actual error
   // AND we don't have any data to display (prevents flash of "not found")
-  if (!loading && (error || !restaurant) && !transitionData && !cachedStatic) {
+  if (!loading && (error || !restaurant) && !contextTransitionData && !transitionData && !cachedStatic) {
     return (
       <div className="app-container">
         <div className="p-4">
@@ -238,10 +272,9 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   }
 
   const isOpen = true
-  // Priority: cached static data > transition data > fetched restaurant data > fallback
-  const heroImage = cachedStatic?.imageUrl || transitionData?.imageUrl || (restaurant ? getRestaurantImageUrl(restaurant.id) : 'https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=1000')
-  const heroName = cachedStatic?.name || transitionData?.name || restaurant?.name
-  const heroLocation = cachedStatic?.location || transitionData?.location || restaurant?.location
+  // Priority: cached static data > context transition data > session transition data > fetched restaurant data > fallback
+  const heroName = cachedStatic?.name || contextTransitionData?.name || transitionData?.name || restaurant?.name
+  const heroLocation = cachedStatic?.location || contextTransitionData?.location || transitionData?.location || restaurant?.location
 
   return (
     <div className="restaurant-detail-container">
@@ -274,9 +307,9 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
       </header>
 
       {/* Main Content */}
-      <div className="content-wrapper">
+      < div className="content-wrapper" >
         {/* View Toggle */}
-        <div className="view-toggle-container">
+        < div className="view-toggle-container" >
           <button
             className={`toggle-opt ${viewMode === 'photo' ? 'active' : ''}`}
             onClick={() => setViewMode('photo')}
@@ -289,256 +322,260 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
           >
             Text View
           </button>
-        </div>
+        </div >
 
         {/* Menu Cards */}
-        {menusLoading ? (
-          // Shimmer loading
-          <div className="menu-card">
-            <div className="menu-header">
-              <div className="shimmer h-5 w-32"></div>
-              <div className="shimmer h-4 w-24"></div>
+        {
+          menusLoading ? (
+            // Shimmer loading
+            <div className="menu-card">
+              <div className="menu-header">
+                <div className="shimmer h-5 w-32"></div>
+                <div className="shimmer h-4 w-24"></div>
+              </div>
+              <div className="shimmer menu-image-shimmer"></div>
+              <div className="contributor-row">
+                <div className="shimmer h-10 w-40"></div>
+              </div>
+              <div className="action-grid">
+                <div className="shimmer h-12"></div>
+                <div className="shimmer h-12"></div>
+              </div>
             </div>
-            <div className="shimmer menu-image-shimmer"></div>
-            <div className="contributor-row">
-              <div className="shimmer h-10 w-40"></div>
-            </div>
-            <div className="action-grid">
-              <div className="shimmer h-12"></div>
-              <div className="shimmer h-12"></div>
-            </div>
-          </div>
-        ) : menus.length > 0 ? (
-          <>
-            {(() => {
-              const groupedMenus = groupImagesByMealType(menus)
-              const getMealOrder = (): Array<'Breakfast' | 'Lunch' | 'Dinner'> => {
-                const hour = new Date().getHours()
-                if (hour >= 5 && hour < 11) return ['Breakfast', 'Lunch', 'Dinner']
-                else if (hour >= 11 && hour < 16) return ['Lunch', 'Dinner', 'Breakfast']
-                else return ['Dinner', 'Breakfast', 'Lunch']
-              }
-              const mealOrder = getMealOrder()
+          ) : menus.length > 0 ? (
+            <>
+              {(() => {
+                const groupedMenus = groupImagesByMealType(menus)
+                const getMealOrder = (): Array<'Breakfast' | 'Lunch' | 'Dinner'> => {
+                  const hour = new Date().getHours()
+                  if (hour >= 5 && hour < 11) return ['Breakfast', 'Lunch', 'Dinner']
+                  else if (hour >= 11 && hour < 16) return ['Lunch', 'Dinner', 'Breakfast']
+                  else return ['Dinner', 'Breakfast', 'Lunch']
+                }
+                const mealOrder = getMealOrder()
 
-              return mealOrder.map(mealType => {
-                const mealMenus = groupedMenus[mealType]
-                if (mealMenus.length === 0) return null
+                return mealOrder.map(mealType => {
+                  const mealMenus = groupedMenus[mealType]
+                  if (mealMenus.length === 0) return null
 
-                const mealIcon = mealType === 'Breakfast' ? 'sun-line' : mealType === 'Lunch' ? 'sun-line' : 'moon-line'
-                const iconColor = mealType === 'Dinner' ? '#6366F1' : '#F59E0B'
+                  const mealIcon = mealType === 'Breakfast' ? 'sun-line' : mealType === 'Lunch' ? 'sun-line' : 'moon-line'
+                  const iconColor = mealType === 'Dinner' ? '#6366F1' : '#F59E0B'
 
-                return mealMenus.map((menu) => (
-                  <div
-                    key={menu.id}
-                    className="menu-card-wrapper"
-                  >
-                    {isAdminUser && (
-                      <div className="delete-action-bg">
-                        <i className="ri-delete-bin-line"></i>
-                      </div>
-                    )}
+                  return mealMenus.map((menu) => (
                     <div
-                      className="menu-card"
-                      style={{
-                        transform: `translateX(${swipeState[menu.id] || 0}px)`,
-                        transition: isDragging === menu.id ? 'none' : 'transform 0.3s ease'
-                      }}
-                      onTouchStart={(e) => handleTouchStart(e, menu.id)}
-                      onTouchMove={(e) => handleTouchMove(e, menu.id)}
-                      onTouchEnd={() => handleTouchEnd(menu.id)}
+                      key={menu.id}
+                      className="menu-card-wrapper"
                     >
-                      {/* Card Header */}
-                      <div className="menu-header">
-                        <div className="meal-type">
-                          <i className={`ri-${mealIcon}`} style={{ color: iconColor }}></i>
-                          <span>{mealType} Menu</span>
-                        </div>
-                        <span className="upload-time">
-                          Updated {formatTimestamp(getEffectiveTimestamp(menu))}
-                        </span>
-                      </div>
-
-                      {/* Photo View */}
-                      {viewMode === 'photo' && (
-                        <div
-                          className="menu-image-container"
-                          onClick={() => {
-                            const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
-                            setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
-                            setViewerOpen(true)
-                          }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
-                            alt="Menu Photo"
-                            className="menu-img"
-                            onError={(e) => {
-                              e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
-                            }}
-                          />
-                          <div className="zoom-hint">
-                            <i className="ri-zoom-in-line"></i> Pinch to zoom
-                          </div>
-                          {isAdminUser && (
-                            <div className="admin-badge-overlay">
-                              <i className="ri-shield-user-line"></i> ADMIN
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Text View */}
-                      {viewMode === 'text' && (
-                        <div className="text-view-container">
-                          {menu.ocr_results ? (
-                            menu.ocr_results.text.split('\n').map((line, index) => (
-                              <div key={index} className="menu-item-row">
-                                <span className="item-name">{line}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <>
-                              <div className="menu-item-row">
-                                <span className="item-name">North Indian Thali</span>
-                                <span className="item-price">₹75</span>
-                              </div>
-                              <div className="menu-item-row">
-                                <span className="item-name">Paneer Butter Masala</span>
-                                <span className="item-price">₹45</span>
-                              </div>
-                              <div className="menu-item-row">
-                                <span className="item-name">Gobi Manchurian</span>
-                                <span className="item-price">₹40</span>
-                              </div>
-                              <div className="menu-item-row">
-                                <span className="item-name">Curd Rice + Pickle</span>
-                                <span className="item-price">₹35</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Contributor Section */}
-                      <div className="contributor-row">
-                        <div className="user-profile">
-                          {menu.contributor ? (
-                            <>
-                              {menu.contributor.is_anonymous ? (
-                                <div className="user-avatar anonymous-avatar">
-                                  <i className="ri-user-incognito-line"></i>
-                                </div>
-                              ) : menu.contributor.avatar_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={menu.contributor.avatar_url} className="user-avatar" alt={menu.contributor.display_name} />
-                              ) : (
-                                <div className="user-avatar avatar-placeholder">
-                                  {menu.contributor.display_name?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                              )}
-                              <div className="user-text">
-                                <span className="user-name">Thanks to {menu.contributor.display_name || 'Anonymous'}</span>
-                                <span className="user-role">Top Contributor 🏆</span>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="user-avatar avatar-placeholder">U</div>
-                              <div className="user-text">
-                                <span className="user-name">Thanks to Contributor</span>
-                                <span className="user-role">Community Member</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <i className="ri-more-2-fill" style={{ color: 'var(--text-muted)' }}></i>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="action-grid">
-                        <button
-                          className={`btn-action btn-helpful ${userVotes[menu.id] === 'helpful' ? 'voted' : ''}`}
-                          onClick={() => handleVote(menu.id, 'helpful')}
-                        >
-                          <i className={userVotes[menu.id] === 'helpful' ? 'ri-heart-fill' : 'ri-thumb-up-line'}></i>
-                          Helpful ({helpfulVotes[menu.id]})
-                        </button>
-                        <button
-                          className={`btn-action btn-report ${userVotes[menu.id] === 'wrong' ? 'voted' : ''}`}
-                          onClick={() => handleVote(menu.id, 'wrong')}
-                        >
-                          <i className="ri-flag-line"></i> Wrong
-                        </button>
-                      </div>
-
-                      {/* Admin Delete Button */}
                       {isAdminUser && (
-                        <button
-                          className="admin-delete-btn"
-                          onClick={() => handleDeleteImage(menu.id)}
-                        >
-                          <i className="ri-delete-bin-line"></i> Delete Image
-                        </button>
+                        <div className="delete-action-bg">
+                          <i className="ri-delete-bin-line"></i>
+                        </div>
                       )}
-                    </div>
-                  </div>
-                ))
-              })
-            })()}
+                      <div
+                        className="menu-card"
+                        style={{
+                          transform: `translateX(${swipeState[menu.id] || 0}px)`,
+                          transition: isDragging === menu.id ? 'none' : 'transform 0.3s ease'
+                        }}
+                        onTouchStart={(e) => handleTouchStart(e, menu.id)}
+                        onTouchMove={(e) => handleTouchMove(e, menu.id)}
+                        onTouchEnd={() => handleTouchEnd(menu.id)}
+                      >
+                        {/* Card Header */}
+                        <div className="menu-header">
+                          <div className="meal-type">
+                            <i className={`ri-${mealIcon}`} style={{ color: iconColor }}></i>
+                            <span>{mealType} Menu</span>
+                          </div>
+                          <span className="upload-time">
+                            Updated {formatTimestamp(getEffectiveTimestamp(menu))}
+                          </span>
+                        </div>
 
-            {/* Archive Section */}
-            <div className="archive-section">
-              <button className="accordion-btn">
-                <span>See Yesterday&apos;s Menu</span>
-                <i className="ri-arrow-down-s-line"></i>
-              </button>
+                        {/* Photo View */}
+                        {viewMode === 'photo' && (
+                          <div
+                            className="menu-image-container"
+                            onClick={() => {
+                              const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
+                              setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
+                              setViewerOpen(true)
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
+                              alt="Menu Photo"
+                              className="menu-img"
+                              onError={(e) => {
+                                e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
+                              }}
+                            />
+                            <div className="zoom-hint">
+                              <i className="ri-zoom-in-line"></i> Pinch to zoom
+                            </div>
+                            {isAdminUser && (
+                              <div className="admin-badge-overlay">
+                                <i className="ri-shield-user-line"></i> ADMIN
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Text View */}
+                        {viewMode === 'text' && (
+                          <div className="text-view-container">
+                            {menu.ocr_results ? (
+                              menu.ocr_results.text.split('\n').map((line, index) => (
+                                <div key={index} className="menu-item-row">
+                                  <span className="item-name">{line}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <>
+                                <div className="menu-item-row">
+                                  <span className="item-name">North Indian Thali</span>
+                                  <span className="item-price">₹75</span>
+                                </div>
+                                <div className="menu-item-row">
+                                  <span className="item-name">Paneer Butter Masala</span>
+                                  <span className="item-price">₹45</span>
+                                </div>
+                                <div className="menu-item-row">
+                                  <span className="item-name">Gobi Manchurian</span>
+                                  <span className="item-price">₹40</span>
+                                </div>
+                                <div className="menu-item-row">
+                                  <span className="item-name">Curd Rice + Pickle</span>
+                                  <span className="item-price">₹35</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Contributor Section */}
+                        <div className="contributor-row">
+                          <div className="user-profile">
+                            {menu.contributor ? (
+                              <>
+                                {menu.contributor.is_anonymous ? (
+                                  <div className="user-avatar anonymous-avatar">
+                                    <i className="ri-user-incognito-line"></i>
+                                  </div>
+                                ) : menu.contributor.avatar_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={menu.contributor.avatar_url} className="user-avatar" alt={menu.contributor.display_name} />
+                                ) : (
+                                  <div className="user-avatar avatar-placeholder">
+                                    {menu.contributor.display_name?.charAt(0).toUpperCase() || 'U'}
+                                  </div>
+                                )}
+                                <div className="user-text">
+                                  <span className="user-name">Thanks to {menu.contributor.display_name || 'Anonymous'}</span>
+                                  <span className="user-role">Top Contributor 🏆</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="user-avatar avatar-placeholder">U</div>
+                                <div className="user-text">
+                                  <span className="user-name">Thanks to Contributor</span>
+                                  <span className="user-role">Community Member</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <i className="ri-more-2-fill" style={{ color: 'var(--text-muted)' }}></i>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="action-grid">
+                          <button
+                            className={`btn-action btn-helpful ${userVotes[menu.id] === 'helpful' ? 'voted' : ''}`}
+                            onClick={() => handleVote(menu.id, 'helpful')}
+                          >
+                            <i className={userVotes[menu.id] === 'helpful' ? 'ri-heart-fill' : 'ri-thumb-up-line'}></i>
+                            Helpful ({helpfulVotes[menu.id]})
+                          </button>
+                          <button
+                            className={`btn-action btn-report ${userVotes[menu.id] === 'wrong' ? 'voted' : ''}`}
+                            onClick={() => handleVote(menu.id, 'wrong')}
+                          >
+                            <i className="ri-flag-line"></i> Wrong
+                          </button>
+                        </div>
+
+                        {/* Admin Delete Button */}
+                        {isAdminUser && (
+                          <button
+                            className="admin-delete-btn"
+                            onClick={() => handleDeleteImage(menu.id)}
+                          >
+                            <i className="ri-delete-bin-line"></i> Delete Image
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                })
+              })()}
+
+              {/* Archive Section */}
+              <div className="archive-section">
+                <button className="accordion-btn">
+                  <span>See Yesterday&apos;s Menu</span>
+                  <i className="ri-arrow-down-s-line"></i>
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="menu-card empty-state">
+              <div className="empty-content">
+                <i className="ri-camera-line"></i>
+                <h4>No Menu Photos</h4>
+                <p>No menu photos have been uploaded yet.</p>
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="menu-card empty-state">
-            <div className="empty-content">
-              <i className="ri-camera-line"></i>
-              <h4>No Menu Photos</h4>
-              <p>No menu photos have been uploaded yet.</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )
+        }
+      </div >
 
       <BottomNav />
 
-      {selectedImage && (
-        <RestaurantImageViewer
-          imageUrl={selectedImage.url}
-          alt={selectedImage.alt}
-          isOpen={viewerOpen}
-          isAdmin={isAdminUser}
-          imageId={menus.find(m => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${m.storage_path}` === selectedImage.url)?.id}
-          onDelete={async (imageId) => {
-            const confirmed = window.confirm('Are you sure you want to delete this menu image? This action cannot be undone.')
-            if (!confirmed) return
+      {
+        selectedImage && (
+          <RestaurantImageViewer
+            imageUrl={selectedImage.url}
+            alt={selectedImage.alt}
+            isOpen={viewerOpen}
+            isAdmin={isAdminUser}
+            imageId={menus.find(m => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${m.storage_path}` === selectedImage.url)?.id}
+            onDelete={async (imageId) => {
+              const confirmed = window.confirm('Are you sure you want to delete this menu image? This action cannot be undone.')
+              if (!confirmed) return
 
-            try {
-              const reason = window.prompt('Reason for deletion (optional):')
-              await apiClient.deleteMenuImage(imageId, reason || undefined)
+              try {
+                const reason = window.prompt('Reason for deletion (optional):')
+                await apiClient.deleteMenuImage(imageId, reason || undefined)
 
-              setMenus(prev => prev.filter(m => m.id !== imageId))
+                setMenus(prev => prev.filter(m => m.id !== imageId))
+                setViewerOpen(false)
+                setSelectedImage(null)
+
+                alert('Image deleted successfully')
+              } catch (error) {
+                console.error('Failed to delete image:', error)
+                alert('Failed to delete image: ' + (error instanceof Error ? error.message : 'Unknown error'))
+              }
+            }}
+            onClose={() => {
               setViewerOpen(false)
               setSelectedImage(null)
-
-              alert('Image deleted successfully')
-            } catch (error) {
-              console.error('Failed to delete image:', error)
-              alert('Failed to delete image: ' + (error instanceof Error ? error.message : 'Unknown error'))
-            }
-          }}
-          onClose={() => {
-            setViewerOpen(false)
-            setSelectedImage(null)
-          }}
-        />
-      )}
+            }}
+          />
+        )
+      }
 
       <style jsx>{`
         /* Design Tokens */
@@ -1040,6 +1077,6 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         .w-32 { width: 128px; }
         .w-40 { width: 160px; }
       `}</style>
-    </div>
+    </div >
   )
 }

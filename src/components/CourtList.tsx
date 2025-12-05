@@ -7,6 +7,7 @@ import { useDistance } from '@/hooks/useDistance'
 import { getCombinedAvailability, clearAvailabilityCache, RestaurantAvailabilityInfo } from '@/lib/combined-availability'
 import { cacheStaticRestaurants } from '@/lib/data-cache'
 import { preloadRestaurantImages, getRestaurantThumbnailUrl, getRestaurantImageUrl } from '@/lib/image-preloader'
+import { useTransition } from '@/context/TransitionContext'
 
 interface Restaurant {
   id: string
@@ -139,11 +140,12 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
   const [mealAvailability, setMealAvailability] = useState<Record<string, RestaurantAvailabilityInfo>>({})
   const [menuStats, setMenuStats] = useState({ withMenus: 0, total: 0, withCurrentMealMenu: 0 })
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [transitionData, setTransitionData] = useState<{
+  const [transitionData, setTransitionDataState] = useState<{
     rect: DOMRect | null
     court: any | null
   }>({ rect: null, court: null })
   const { calculateDistance } = useDistance()
+  const { setTransitionData } = useTransition()
 
   // Pull to refresh state
   const [pullStartY, setPullStartY] = useState(0)
@@ -247,7 +249,16 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
   const handleCardTransition = useCallback((element: HTMLElement, court: any) => {
     const rect = element.getBoundingClientRect()
 
-    // Store transition data in sessionStorage for the target page
+    // Store transition data in Context for the target page (Instant Load)
+    setTransitionData({
+      name: court.name,
+      location: court.location,
+      imageUrl: court.heroImageUrl || court.imageUrl,
+      thumbnailUrl: court.imageUrl, // Pass the thumbnail (which is likely already loaded)
+      slug: court.slug
+    })
+
+    // Keep sessionStorage as a backup
     sessionStorage.setItem('cardTransition', JSON.stringify({
       name: court.name,
       location: court.location,
@@ -260,7 +271,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
       }
     }))
 
-    setTransitionData({ rect, court })
+    setTransitionDataState({ rect, court })
     setIsTransitioning(true)
 
     // Navigate after short delay to let animation start

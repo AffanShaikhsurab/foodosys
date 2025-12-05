@@ -2,10 +2,11 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react'
 
-interface TransitionData {
+export interface TransitionData {
     name: string
     location: string
     imageUrl: string
+    thumbnailUrl?: string
     slug?: string
 }
 
