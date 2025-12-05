@@ -111,6 +111,24 @@ export function groupImagesByMealType<T extends { photo_taken_at?: string | null
   return grouped
 }
 
+/**
+ * Checks if a timestamp is from today
+ * @param timestamp - The timestamp to check
+ * @returns true if the timestamp is from today, false otherwise
+ */
+export function isToday(timestamp: string | null | undefined): boolean {
+  if (!timestamp) return false
+
+  const date = new Date(timestamp)
+  const now = new Date()
+
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  )
+}
+
 export function groupImagesByDate<T extends { photo_taken_at?: string | null; created_at: string }>(menuImages: Array<T>): Record<string, Array<T>> {
   const grouped: Record<string, Array<T>> = {}
 
