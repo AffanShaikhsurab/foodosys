@@ -56,9 +56,9 @@ export default function FeedbackButton() {
 
             {/* Popup Menu */}
             <div
-                className={`fixed bottom-24 right-4 z-[9999] transition-all duration-300 ease-out ${isOpen
-                        ? 'opacity-100 translate-y-0 scale-100'
-                        : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+                className={`fixed bottom-44 right-4 z-[9999] transition-all duration-300 ease-out ${isOpen
+                    ? 'opacity-100 translate-y-0 scale-100'
+                    : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
                     }`}
             >
                 <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden min-w-[280px]">
@@ -95,9 +95,9 @@ export default function FeedbackButton() {
             {/* FAB Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`fixed bottom-4 right-4 z-[9999] w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 ${isOpen
-                        ? 'bg-[#2C3E2E] rotate-45'
-                        : 'bg-gradient-to-br from-[#DCEB66] to-[#c5d65a] hover:shadow-xl'
+                className={`fixed bottom-24 right-4 z-[9999] w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 ${isOpen
+                    ? 'bg-[#2C3E2E] rotate-45'
+                    : 'bg-gradient-to-br from-[#DCEB66] to-[#c5d65a] hover:shadow-xl'
                     }`}
                 aria-label="Share feedback"
             >

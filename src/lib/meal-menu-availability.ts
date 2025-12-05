@@ -1,6 +1,6 @@
 import { supabase } from './supabase-browser'
 import { getMenuTimestamp } from './menu-time-utils'
-import { getMealType, getEffectiveTimestamp } from './utils'
+import { getMealType, getEffectiveTimestamp, isToday } from './utils'
 
 export interface RestaurantMealAvailability {
   hasMenu: boolean
@@ -13,7 +13,7 @@ export interface RestaurantMealAvailability {
  */
 export function getCurrentMealType(): 'Breakfast' | 'Lunch' | 'Dinner' {
   const hour = new Date().getHours()
-  
+
   if (hour >= 6 && hour < 11) {
     return 'Breakfast'
   } else if (hour >= 11 && hour < 16) {
@@ -53,19 +53,25 @@ export async function checkRestaurantMealAvailability(restaurantId: string): Pro
     }
 
     // Determine meal types for each menu
+    const currentMealType = getCurrentMealType()
     const availableMealTypes = new Set<string>()
+    // Track if there's a menu for the CURRENT meal type AND from TODAY
+    let hasCurrentMealMenuToday = false
+
     menuImages.forEach(menu => {
       const timestamp = getEffectiveTimestamp(menu)
       const mealType = getMealType(timestamp)
       availableMealTypes.add(mealType)
-    })
 
-    const currentMealType = getCurrentMealType()
-    const hasCurrentMealMenu = availableMealTypes.has(currentMealType)
+      // Only mark as "live" if the menu is from TODAY and matches current meal type
+      if (mealType === currentMealType && isToday(timestamp)) {
+        hasCurrentMealMenuToday = true
+      }
+    })
 
     return {
       hasMenu: true,
-      hasCurrentMealMenu,
+      hasCurrentMealMenu: hasCurrentMealMenuToday,
       availableMealTypes: Array.from(availableMealTypes)
     }
   } catch (error) {
@@ -129,16 +135,23 @@ export async function getMealAvailabilityForRestaurants(restaurantIds: string[])
     const currentMealType = getCurrentMealType()
     Object.entries(menusByRestaurant).forEach(([restaurantId, menus]) => {
       const availableMealTypes = new Set<string>()
-      
+      // Track if there's a menu for the CURRENT meal type AND from TODAY
+      let hasCurrentMealMenuToday = false
+
       menus.forEach(menu => {
         const timestamp = getEffectiveTimestamp(menu)
         const mealType = getMealType(timestamp)
         availableMealTypes.add(mealType)
+
+        // Only mark as "live" if the menu is from TODAY and matches current meal type
+        if (mealType === currentMealType && isToday(timestamp)) {
+          hasCurrentMealMenuToday = true
+        }
       })
 
       availability[restaurantId] = {
         hasMenu: true,
-        hasCurrentMealMenu: availableMealTypes.has(currentMealType),
+        hasCurrentMealMenu: hasCurrentMealMenuToday,
         availableMealTypes: Array.from(availableMealTypes)
       }
     })

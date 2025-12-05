@@ -12,7 +12,7 @@
  */
 
 import { supabase } from './supabase-browser'
-import { getMealType, getEffectiveTimestamp } from './utils'
+import { getMealType, getEffectiveTimestamp, isToday } from './utils'
 
 export interface RestaurantAvailabilityInfo {
     hasMenu: boolean
@@ -125,17 +125,25 @@ export async function getCombinedAvailability(
             // This restaurant has menus
             menuAvailability[restaurantId] = true
 
-            // Determine available meal types
+            // Determine available meal types (all menus)
             const availableMealTypes = new Set<string>()
+            // Track if there's a menu for the CURRENT meal type AND from TODAY
+            let hasCurrentMealMenuToday = false
+
             menus.forEach(menu => {
                 const timestamp = getEffectiveTimestamp(menu)
                 const mealType = getMealType(timestamp)
                 availableMealTypes.add(mealType)
+
+                // Only mark as "live" if the menu is from TODAY and matches current meal type
+                if (mealType === currentMealType && isToday(timestamp)) {
+                    hasCurrentMealMenuToday = true
+                }
             })
 
             mealAvailability[restaurantId] = {
                 hasMenu: true,
-                hasCurrentMealMenu: availableMealTypes.has(currentMealType),
+                hasCurrentMealMenu: hasCurrentMealMenuToday,
                 availableMealTypes: Array.from(availableMealTypes)
             }
         })
