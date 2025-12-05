@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider, ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
 import { TourProvider } from './TourProvider'
 import { TransitionProvider } from '@/context/TransitionContext'
+import { LocationProvider } from '@/context/LocationContext'
 import { getAllImageUrls } from '@/lib/image-preloader'
 import FeedbackButton from '@/components/FeedbackButton'
 
@@ -82,12 +83,14 @@ export default function RootLayout({
           </ClerkLoading>
           <ClerkLoaded>
             <TransitionProvider>
-              <TourProvider>
-                <div className="app-container">
-                  {children}
-                </div>
-              </TourProvider>
-              <FeedbackButton />
+              <LocationProvider>
+                <TourProvider>
+                  <div className="app-container">
+                    {children}
+                  </div>
+                </TourProvider>
+                <FeedbackButton />
+              </LocationProvider>
             </TransitionProvider>
           </ClerkLoaded>
           <Analytics />
