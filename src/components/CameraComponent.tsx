@@ -53,7 +53,7 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
       if (photo) {
         logCamera('Starting image processing', { operation: 'image_processing_start' })
 
-        // Create a canvas to rotate the image if needed
+        // Create a canvas to process the image
         const img = new Image()
         img.onload = () => {
           logCamera('Image loaded for processing', {
@@ -69,11 +69,8 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
             canvas.width = img.width
             canvas.height = img.height
 
-            // For selfie camera effect, we need to flip the image horizontally
-            ctx.translate(canvas.width, 0)
-            ctx.scale(-1, 1)
-
-            // Draw the image
+            // No flip needed for back camera (environment mode)
+            // Draw the image as-is without any transformation
             ctx.drawImage(img, 0, 0)
 
             // Convert to base64

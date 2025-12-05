@@ -93,8 +93,35 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   const [swipeState, setSwipeState] = useState<{ [key: string]: number }>({})
   const [isDragging, setIsDragging] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'photo' | 'text'>('photo')
+  const [showYesterdayMenu, setShowYesterdayMenu] = useState(false)
   const touchStartX = useRef<number>(0)
   const touchStartY = useRef<number>(0)
+
+  // Helper function to filter menus by recency (today, yesterday, older)
+  const filterMenusByRecency = (allMenus: DisplayMenu[]) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const todayMenus: DisplayMenu[] = []
+    const yesterdayMenus: DisplayMenu[] = []
+
+    allMenus.forEach(menu => {
+      const timestamp = menu.photo_taken_at || menu.created_at
+      const menuDate = new Date(timestamp)
+      const menuDateOnly = new Date(menuDate.getFullYear(), menuDate.getMonth(), menuDate.getDate())
+
+      if (menuDateOnly.getTime() === today.getTime()) {
+        todayMenus.push(menu)
+      } else if (menuDateOnly.getTime() === yesterday.getTime()) {
+        yesterdayMenus.push(menu)
+      }
+      // Anything older than yesterday is excluded
+    })
+
+    return { todayMenus, yesterdayMenus }
+  }
 
   // Transition data is now read synchronously in useState initializer above
 
@@ -342,202 +369,221 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
                 <div className="shimmer h-12"></div>
               </div>
             </div>
-          ) : menus.length > 0 ? (
-            <>
-              {(() => {
-                const groupedMenus = groupImagesByMealType(menus)
-                const getMealOrder = (): Array<'Breakfast' | 'Lunch' | 'Dinner'> => {
-                  const hour = new Date().getHours()
-                  if (hour >= 5 && hour < 11) return ['Breakfast', 'Lunch', 'Dinner']
-                  else if (hour >= 11 && hour < 16) return ['Lunch', 'Dinner', 'Breakfast']
-                  else return ['Dinner', 'Breakfast', 'Lunch']
-                }
-                const mealOrder = getMealOrder()
+          ) : (() => {
+            // Filter menus to only show today and yesterday
+            const { todayMenus, yesterdayMenus } = filterMenusByRecency(menus)
+            const hasAnyMenus = todayMenus.length > 0 || yesterdayMenus.length > 0
 
-                return mealOrder.map(mealType => {
-                  const mealMenus = groupedMenus[mealType]
-                  if (mealMenus.length === 0) return null
+            if (!hasAnyMenus) {
+              return (
+                <div className="menu-card empty-state">
+                  <div className="empty-content">
+                    <i className="ri-camera-line"></i>
+                    <h4>No Menu Photos</h4>
+                    <p>No menu photos have been uploaded for today or yesterday.</p>
+                  </div>
+                </div>
+              )
+            }
 
-                  const mealIcon = mealType === 'Breakfast' ? 'sun-line' : mealType === 'Lunch' ? 'sun-line' : 'moon-line'
-                  const iconColor = mealType === 'Dinner' ? '#6366F1' : '#F59E0B'
+            // Helper function to render a single menu card
+            const renderMenuCard = (menu: DisplayMenu) => {
+              const timestamp = menu.photo_taken_at || menu.created_at
+              const date = new Date(timestamp)
+              const hour = date.getHours()
+              let mealType: 'Breakfast' | 'Lunch' | 'Dinner'
+              if (hour >= 5 && hour < 11) mealType = 'Breakfast'
+              else if (hour >= 11 && hour < 16) mealType = 'Lunch'
+              else mealType = 'Dinner'
 
-                  return mealMenus.map((menu) => (
-                    <div
-                      key={menu.id}
-                      className="menu-card-wrapper"
-                    >
-                      {isAdminUser && (
-                        <div className="delete-action-bg">
-                          <i className="ri-delete-bin-line"></i>
-                        </div>
-                      )}
+              const mealIcon = mealType === 'Dinner' ? 'moon-line' : 'sun-line'
+              const iconColor = mealType === 'Dinner' ? '#6366F1' : '#F59E0B'
+
+              return (
+                <div
+                  key={menu.id}
+                  className="menu-card-wrapper"
+                >
+                  {isAdminUser && (
+                    <div className="delete-action-bg">
+                      <i className="ri-delete-bin-line"></i>
+                    </div>
+                  )}
+                  <div
+                    className="menu-card"
+                    style={{
+                      transform: `translateX(${swipeState[menu.id] || 0}px)`,
+                      transition: isDragging === menu.id ? 'none' : 'transform 0.3s ease'
+                    }}
+                    onTouchStart={(e) => handleTouchStart(e, menu.id)}
+                    onTouchMove={(e) => handleTouchMove(e, menu.id)}
+                    onTouchEnd={() => handleTouchEnd(menu.id)}
+                  >
+                    {/* Card Header */}
+                    <div className="menu-header">
+                      <div className="meal-type">
+                        <i className={`ri-${mealIcon}`} style={{ color: iconColor }}></i>
+                        <span>{mealType} Menu</span>
+                      </div>
+                      <span className="upload-time">
+                        Updated {formatTimestamp(getEffectiveTimestamp(menu))}
+                      </span>
+                    </div>
+
+                    {/* Photo View */}
+                    {viewMode === 'photo' && (
                       <div
-                        className="menu-card"
-                        style={{
-                          transform: `translateX(${swipeState[menu.id] || 0}px)`,
-                          transition: isDragging === menu.id ? 'none' : 'transform 0.3s ease'
+                        className="menu-image-container"
+                        onClick={() => {
+                          const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
+                          setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
+                          setViewerOpen(true)
                         }}
-                        onTouchStart={(e) => handleTouchStart(e, menu.id)}
-                        onTouchMove={(e) => handleTouchMove(e, menu.id)}
-                        onTouchEnd={() => handleTouchEnd(menu.id)}
                       >
-                        {/* Card Header */}
-                        <div className="menu-header">
-                          <div className="meal-type">
-                            <i className={`ri-${mealIcon}`} style={{ color: iconColor }}></i>
-                            <span>{mealType} Menu</span>
-                          </div>
-                          <span className="upload-time">
-                            Updated {formatTimestamp(getEffectiveTimestamp(menu))}
-                          </span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
+                          alt="Menu Photo"
+                          className="menu-img"
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
+                          }}
+                        />
+                        <div className="zoom-hint">
+                          <i className="ri-zoom-in-line"></i> Pinch to zoom
                         </div>
-
-                        {/* Photo View */}
-                        {viewMode === 'photo' && (
-                          <div
-                            className="menu-image-container"
-                            onClick={() => {
-                              const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`
-                              setSelectedImage({ url: imageUrl, alt: 'Menu Photo' })
-                              setViewerOpen(true)
-                            }}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/menu-images/${menu.storage_path}`}
-                              alt="Menu Photo"
-                              className="menu-img"
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
-                              }}
-                            />
-                            <div className="zoom-hint">
-                              <i className="ri-zoom-in-line"></i> Pinch to zoom
-                            </div>
-                            {isAdminUser && (
-                              <div className="admin-badge-overlay">
-                                <i className="ri-shield-user-line"></i> ADMIN
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Text View */}
-                        {viewMode === 'text' && (
-                          <div className="text-view-container">
-                            {menu.ocr_results ? (
-                              menu.ocr_results.text.split('\n').map((line, index) => (
-                                <div key={index} className="menu-item-row">
-                                  <span className="item-name">{line}</span>
-                                </div>
-                              ))
-                            ) : (
-                              <>
-                                <div className="menu-item-row">
-                                  <span className="item-name">North Indian Thali</span>
-                                  <span className="item-price">₹75</span>
-                                </div>
-                                <div className="menu-item-row">
-                                  <span className="item-name">Paneer Butter Masala</span>
-                                  <span className="item-price">₹45</span>
-                                </div>
-                                <div className="menu-item-row">
-                                  <span className="item-name">Gobi Manchurian</span>
-                                  <span className="item-price">₹40</span>
-                                </div>
-                                <div className="menu-item-row">
-                                  <span className="item-name">Curd Rice + Pickle</span>
-                                  <span className="item-price">₹35</span>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Contributor Section */}
-                        <div className="contributor-row">
-                          <div className="user-profile">
-                            {menu.contributor ? (
-                              <>
-                                {menu.contributor.is_anonymous ? (
-                                  <div className="user-avatar anonymous-avatar">
-                                    <i className="ri-user-incognito-line"></i>
-                                  </div>
-                                ) : menu.contributor.avatar_url ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={menu.contributor.avatar_url} className="user-avatar" alt={menu.contributor.display_name} />
-                                ) : (
-                                  <div className="user-avatar avatar-placeholder">
-                                    {menu.contributor.display_name?.charAt(0).toUpperCase() || 'U'}
-                                  </div>
-                                )}
-                                <div className="user-text">
-                                  <span className="user-name">Thanks to {menu.contributor.display_name || 'Anonymous'}</span>
-                                  <span className="user-role">Top Contributor 🏆</span>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="user-avatar avatar-placeholder">U</div>
-                                <div className="user-text">
-                                  <span className="user-name">Thanks to Contributor</span>
-                                  <span className="user-role">Community Member</span>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          <i className="ri-more-2-fill" style={{ color: 'var(--text-muted)' }}></i>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="action-grid">
-                          <button
-                            className={`btn-action btn-helpful ${userVotes[menu.id] === 'helpful' ? 'voted' : ''}`}
-                            onClick={() => handleVote(menu.id, 'helpful')}
-                          >
-                            <i className={userVotes[menu.id] === 'helpful' ? 'ri-heart-fill' : 'ri-thumb-up-line'}></i>
-                            Helpful ({helpfulVotes[menu.id]})
-                          </button>
-                          <button
-                            className={`btn-action btn-report ${userVotes[menu.id] === 'wrong' ? 'voted' : ''}`}
-                            onClick={() => handleVote(menu.id, 'wrong')}
-                          >
-                            <i className="ri-flag-line"></i> Wrong
-                          </button>
-                        </div>
-
-                        {/* Admin Delete Button */}
                         {isAdminUser && (
-                          <button
-                            className="admin-delete-btn"
-                            onClick={() => handleDeleteImage(menu.id)}
-                          >
-                            <i className="ri-delete-bin-line"></i> Delete Image
-                          </button>
+                          <div className="admin-badge-overlay">
+                            <i className="ri-shield-user-line"></i> ADMIN
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))
-                })
-              })()}
+                    )}
 
-              {/* Archive Section */}
-              <div className="archive-section">
-                <button className="accordion-btn">
-                  <span>See Yesterday&apos;s Menu</span>
-                  <i className="ri-arrow-down-s-line"></i>
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="menu-card empty-state">
-              <div className="empty-content">
-                <i className="ri-camera-line"></i>
-                <h4>No Menu Photos</h4>
-                <p>No menu photos have been uploaded yet.</p>
-              </div>
-            </div>
-          )
+                    {/* Text View - Coming Soon */}
+                    {viewMode === 'text' && (
+                      <div className="text-view-container coming-soon-container">
+                        <div className="coming-soon-content">
+                          <i className="ri-magic-line"></i>
+                          <h4>Coming Soon!</h4>
+                          <p>Text extraction feature is under development. Stay tuned!</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contributor Section */}
+                    <div className="contributor-row">
+                      <div className="user-profile">
+                        {menu.contributor ? (
+                          <>
+                            {menu.contributor.is_anonymous ? (
+                              <div className="user-avatar anonymous-avatar">
+                                <i className="ri-user-incognito-line"></i>
+                              </div>
+                            ) : menu.contributor.avatar_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={menu.contributor.avatar_url} className="user-avatar" alt={menu.contributor.display_name} />
+                            ) : (
+                              <div className="user-avatar avatar-placeholder">
+                                {menu.contributor.display_name?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                            )}
+                            <div className="user-text">
+                              <span className="user-name">Thanks to {menu.contributor.display_name || 'Anonymous'}</span>
+                              <span className="user-role">Top Contributor 🏆</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="user-avatar avatar-placeholder">U</div>
+                            <div className="user-text">
+                              <span className="user-name">Thanks to Contributor</span>
+                              <span className="user-role">Community Member</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <i className="ri-more-2-fill" style={{ color: 'var(--text-muted)' }}></i>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="action-grid">
+                      <button
+                        className={`btn-action btn-helpful ${userVotes[menu.id] === 'helpful' ? 'voted' : ''}`}
+                        onClick={() => handleVote(menu.id, 'helpful')}
+                      >
+                        <i className={userVotes[menu.id] === 'helpful' ? 'ri-heart-fill' : 'ri-thumb-up-line'}></i>
+                        Helpful ({helpfulVotes[menu.id]})
+                      </button>
+                      <button
+                        className={`btn-action btn-report ${userVotes[menu.id] === 'wrong' ? 'voted' : ''}`}
+                        onClick={() => handleVote(menu.id, 'wrong')}
+                      >
+                        <i className="ri-flag-line"></i> Wrong
+                      </button>
+                    </div>
+
+                    {/* Admin Delete Button */}
+                    {isAdminUser && (
+                      <button
+                        className="admin-delete-btn"
+                        onClick={() => handleDeleteImage(menu.id)}
+                      >
+                        <i className="ri-delete-bin-line"></i> Delete Image
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <>
+                {/* Today's Section Header */}
+                {todayMenus.length > 0 && (
+                  <div className="date-section-header">
+                    <i className="ri-calendar-check-line"></i>
+                    <span>Today&apos;s Menu</span>
+                  </div>
+                )}
+
+                {/* Today's Menus */}
+                {todayMenus.map(menu => renderMenuCard(menu))}
+
+                {/* No Today's Menu Message */}
+                {todayMenus.length === 0 && yesterdayMenus.length > 0 && (
+                  <div className="menu-card empty-state today-empty">
+                    <div className="empty-content">
+                      <i className="ri-calendar-line"></i>
+                      <h4>No Menu Today Yet</h4>
+                      <p>Check back later or upload today&apos;s menu!</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Yesterday's Section - Collapsible Toggle */}
+                {yesterdayMenus.length > 0 && (
+                  <div className="archive-section">
+                    <button
+                      className={`accordion-btn ${showYesterdayMenu ? 'expanded' : ''}`}
+                      onClick={() => setShowYesterdayMenu(!showYesterdayMenu)}
+                    >
+                      <span>
+                        <i className="ri-history-line" style={{ marginRight: '8px' }}></i>
+                        Yesterday&apos;s Menu ({yesterdayMenus.length})
+                      </span>
+                      <i className={`ri-arrow-${showYesterdayMenu ? 'up' : 'down'}-s-line`}></i>
+                    </button>
+
+                    {/* Yesterday's Menu Content - Collapsible */}
+                    <div className={`yesterday-menu-content ${showYesterdayMenu ? 'expanded' : ''}`}>
+                      {yesterdayMenus.map(menu => renderMenuCard(menu))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()
         }
       </div >
 
@@ -1014,7 +1060,7 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
 
         .accordion-btn {
           width: 100%;
-          background: transparent;
+          background: var(--bg-card);
           border: none;
           display: flex;
           justify-content: space-between;
@@ -1022,9 +1068,92 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
           color: var(--text-muted);
           font-size: 14px;
           font-weight: 600;
-          padding: 16px 0;
-          border-top: 1px solid rgba(0,0,0,0.06);
+          padding: 16px;
+          border-radius: 16px;
           cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .accordion-btn:hover {
+          background: rgba(0,0,0,0.03);
+        }
+
+        .accordion-btn.expanded {
+          color: var(--primary-dark);
+          background: var(--bg-card);
+          border-bottom-left-radius: 0;
+          border-bottom-right-radius: 0;
+        }
+
+        .accordion-btn i {
+          transition: transform 0.3s ease;
+        }
+
+        /* Yesterday's Menu Collapsible Content */
+        .yesterday-menu-content {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.4s ease-out, opacity 0.3s ease;
+          opacity: 0;
+        }
+
+        .yesterday-menu-content.expanded {
+          max-height: 2000px;
+          opacity: 1;
+          padding-top: 12px;
+        }
+
+        /* Date Section Header */
+        .date-section-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 0;
+          margin-bottom: 8px;
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--primary-dark);
+        }
+
+        .date-section-header i {
+          color: #22C55E;
+          font-size: 18px;
+        }
+
+        /* Coming Soon Text View */
+        .coming-soon-container {
+          background: linear-gradient(135deg, #f5f7fa 0%, #e8f4f8 100%);
+          border-radius: 16px;
+          padding: 32px 20px;
+        }
+
+        .coming-soon-content {
+          text-align: center;
+        }
+
+        .coming-soon-content i {
+          font-size: 48px;
+          color: #6366F1;
+          margin-bottom: 16px;
+          display: block;
+        }
+
+        .coming-soon-content h4 {
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--primary-dark);
+          margin-bottom: 8px;
+        }
+
+        .coming-soon-content p {
+          font-size: 14px;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        /* Today Empty State */
+        .today-empty {
+          margin-bottom: 16px;
         }
 
         /* Empty State */
