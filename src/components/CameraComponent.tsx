@@ -155,63 +155,58 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
   }
 
   return (
-    <div className="camera-zone">
+    <div className="camera-container" style={{ position: 'relative' }}>
       {error ? (
-        <div className="camera-error">
-          <div className="camera-error-content">
-            <i className="ri-camera-off-line" style={{ fontSize: '48px', color: 'var(--status-error)', marginBottom: '16px' }}></i>
-            <p style={{ color: 'var(--text-main)', textAlign: 'center', marginBottom: '16px' }}>
-              {error}
-            </p>
-            <button
-              onClick={onClose}
-              className="btn-outline"
-              style={{ padding: '12px 24px' }}
-            >
-              <i className="ri-arrow-left-line"></i> Back
-            </button>
-          </div>
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          padding: '24px',
+          textAlign: 'center'
+        }}>
+          <i className="ri-camera-off-line" style={{ fontSize: '48px', color: 'var(--status-error)', marginBottom: '16px' }}></i>
+          <p style={{ color: 'white', marginBottom: '16px' }}>{error}</p>
+          <button
+            onClick={onClose}
+            className="btn-outline"
+            style={{
+              padding: '12px 24px',
+              background: 'rgba(255, 255, 255, 0.9)',
+              color: 'var(--primary-dark)',
+              border: 'none',
+              borderRadius: 'var(--radius-pill)'
+            }}
+          >
+            <i className="ri-arrow-left-line"></i> Back
+          </button>
         </div>
       ) : capturedImage ? (
-        <div className="camera-preview" style={{ backgroundImage: `url(${capturedImage})`, opacity: 1, filter: 'none' }}>
-          <div className="camera-controls">
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `url(${capturedImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}>
+          <div className="camera-controls-bar">
             <button
               onClick={handleRetake}
-              className="btn-outline"
-              style={{
-                position: 'absolute',
-                top: '16px',
-                left: '16px',
-                padding: '8px 16px',
-                background: 'rgba(255, 255, 255, 0.9)',
-                color: 'var(--primary-dark)',
-                border: 'none',
-                borderRadius: 'var(--radius-pill)',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
+              className="btn-icon"
             >
-              <i className="ri-refresh-line"></i> Retake
+              <i className="ri-refresh-line"></i>
             </button>
+
+            <div style={{ width: '72px' }}></div>
 
             {onClose && (
               <button
                 onClick={onClose}
-                className="btn-outline"
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  padding: '8px 16px',
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  color: 'var(--primary-dark)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-pill)',
-                  fontSize: '14px',
-                  fontWeight: '600'
-                }}
+                className="btn-icon"
               >
-                <i className="ri-close-line"></i> Close
+                <i className="ri-close-line"></i>
               </button>
             )}
           </div>
@@ -219,61 +214,63 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
       ) : (
         <>
           {isCameraActive ? (
-            <Camera
-              ref={camera}
-              facingMode='environment'
-              errorMessages={{
-                noCameraAccessible: 'Camera access denied. Please enable camera permissions.',
-                permissionDenied: 'Camera permission denied. Please enable camera permissions in your browser settings.',
-                switchCamera: 'Cannot switch camera.',
-                canvas: 'Canvas is not supported.'
-              }}
-            />
-          ) : (
-            <div className="camera-preview">
-              <div className="camera-loading">
-                <i className="ri-loader-4-line" style={{ fontSize: '48px', color: 'var(--accent-lime)', animation: 'spin 1s linear infinite' }}></i>
-                <p style={{ color: 'white', marginTop: '16px' }}>Initializing camera...</p>
-              </div>
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <Camera
+                ref={camera}
+                facingMode='environment'
+                errorMessages={{
+                  noCameraAccessible: 'Camera access denied. Please enable camera permissions.',
+                  permissionDenied: 'Camera permission denied. Please enable camera permissions in your browser settings.',
+                  switchCamera: 'Cannot switch camera.',
+                  canvas: 'Canvas is not supported.'
+                }}
+              />
             </div>
+          ) : (
+            <div className="camera-feed-bg" style={{ opacity: 0.3 }}></div>
           )}
 
-          <div className="camera-ui">
-            <div
-              className={`camera-btn ${isCapturing ? 'disabled' : ''}`}
-              onClick={isCapturing ? undefined : handleCapture}
-              style={{ opacity: isCapturing ? 0.6 : 1 }}
-            >
-              <i className={isCapturing ? "ri-loader-4-line" : "ri-camera-fill"} style={{
-                animation: isCapturing ? 'spin 1s linear infinite' : 'none'
-              }}></i>
-            </div>
-            <div className="camera-text">
-              {isCapturing ? 'Capturing...' : 'Tap to capture menu'}
-            </div>
+          {/* Scan Overlay */}
+          <div className="scan-overlay-frame">
+            <div className="corner tl"></div>
+            <div className="corner tr"></div>
+            <div className="corner bl"></div>
+            <div className="corner br"></div>
+            {!isCapturing && <div className="laser-line"></div>}
           </div>
 
-          {onClose && (
+          {/* Camera Controls */}
+          <div className="camera-controls-bar">
+            {onClose && (
+              <button onClick={onClose} className="btn-icon">
+                <i className="ri-close-line"></i>
+              </button>
+            )}
+
+            {/* The Shutter Button */}
             <button
-              onClick={onClose}
-              className="btn-outline"
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                padding: '8px 16px',
-                background: 'rgba(255, 255, 255, 0.9)',
-                color: 'var(--primary-dark)',
-                border: 'none',
-                borderRadius: 'var(--radius-pill)',
-                fontSize: '14px',
-                fontWeight: '600',
-                zIndex: 10
-              }}
+              className={`shutter-btn ${isCapturing ? 'disabled' : ''}`}
+              onClick={isCapturing ? undefined : handleCapture}
             >
-              <i className="ri-close-line"></i> Close
+              <div className="shutter-inner" style={
+                isCapturing
+                  ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+                  : {}
+              }>
+                {isCapturing && (
+                  <i className="ri-loader-4-line" style={{
+                    fontSize: '24px',
+                    color: 'var(--primary-dark)',
+                    animation: 'spin 1s linear infinite'
+                  }}></i>
+                )}
+              </div>
             </button>
-          )}
+
+            <button className="btn-icon">
+              <i className="ri-flashlight-line"></i>
+            </button>
+          </div>
         </>
       )}
 
@@ -281,40 +278,6 @@ export default function CameraComponent({ onPhotoCapture, onClose }: CameraCompo
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        
-        .camera-error {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--primary-dark);
-          border-radius: var(--radius-xl);
-        }
-        
-        .camera-error-content {
-          text-align: center;
-          padding: 24px;
-        }
-        
-        .camera-loading {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-        }
-        
-        .camera-controls {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          padding: 16px;
-          display: flex;
-          justify-content: space-between;
-          z-index: 10;
         }
       `}</style>
     </div>

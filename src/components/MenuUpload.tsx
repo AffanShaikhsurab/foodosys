@@ -329,12 +329,13 @@ export default function MenuUpload({
 
   if (isCheckingAuth) {
     return (
-      <div className="camera-zone">
-        <div className="camera-ui">
-          <div className="camera-btn">
-            <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }}></i>
+      <div className="camera-container">
+        <div className="camera-feed-bg" style={{ opacity: 0.3 }}></div>
+        <div className="camera-controls-bar" style={{ justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', color: 'white' }}>
+            <i className="ri-loader-4-line" style={{ fontSize: '32px', animation: 'spin 1s linear infinite' }}></i>
+            <p style={{ marginTop: '8px', fontSize: '14px' }}>Checking authentication...</p>
           </div>
-          <div className="camera-text">Checking authentication...</div>
         </div>
       </div>
     )
@@ -351,12 +352,12 @@ export default function MenuUpload({
         <>
           {/* Authentication Message */}
           {!isAuthenticated && !isAnonymousMode && (
-            <div className="error-message" style={{
-              marginBottom: '16px',
+            <div style={{
+              margin: '0 20px 16px',
               padding: '16px',
               backgroundColor: '#FEF3C7',
               color: '#92400E',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '16px',
               fontSize: '14px',
               border: '1px solid #F59E0B'
             }}>
@@ -367,12 +368,12 @@ export default function MenuUpload({
 
           {/* Anonymous Mode Message */}
           {isAnonymousMode && (
-            <div className="success-message" style={{
-              marginBottom: '16px',
+            <div style={{
+              margin: '0 20px 16px',
               padding: '16px',
               backgroundColor: '#F0FDF4',
               color: '#166534',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '16px',
               fontSize: '14px',
               border: '1px solid #22C55E'
             }}>
@@ -383,12 +384,12 @@ export default function MenuUpload({
 
           {/* Error Display */}
           {uploadError && (
-            <div className="error-message" style={{
-              marginBottom: '16px',
-              padding: '12px',
+            <div style={{
+              margin: '0 20px 16px',
+              padding: '12px 16px',
               backgroundColor: 'var(--status-error)',
               color: 'white',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '16px',
               fontSize: '14px'
             }}>
               <i className="ri-error-warning-line" style={{ marginRight: '8px' }}></i>
@@ -396,8 +397,8 @@ export default function MenuUpload({
             </div>
           )}
 
-          {/* Camera Zone */}
-          <div className="camera-zone">
+          {/* Camera Container */}
+          <div className="camera-container">
             {preview ? (
               <img
                 src={preview}
@@ -408,51 +409,72 @@ export default function MenuUpload({
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
-                  borderRadius: 'var(--radius-xl)',
                   zIndex: 1
                 }}
               />
             ) : (
-              <div className="camera-preview"></div>
+              <>
+                <div className="camera-feed-bg"></div>
+
+                {/* Overlay UI */}
+                {!isUploading && !isInitializing && (
+                  <div className="scan-overlay-frame">
+                    <div className="corner tl"></div>
+                    <div className="corner tr"></div>
+                    <div className="corner bl"></div>
+                    <div className="corner br"></div>
+                    <div className="laser-line"></div>
+                  </div>
+                )}
+              </>
             )}
 
-            {!isUploading && !isInitializing && !preview && <div className="scan-line"></div>}
-
-            <div className="camera-ui" style={{ position: 'relative', zIndex: 10 }}>
-              <div className={`camera-btn ${isUploading || (!isAuthenticated && !isAnonymousMode) ? 'disabled' : ''}`}
-                onClick={isUploading ? undefined : (preview ? handleRetake : handleScanClick)}>
-                <i className={isInitializing ? "ri-loader-4-line" : isUploading ? "ri-loader-4-line" : ((!isAuthenticated && !isAnonymousMode) ? "ri-lock-line" : (preview ? "ri-refresh-line" : "ri-camera-fill"))}
-                  style={{ animation: (isInitializing || isUploading) ? 'spin 1s linear infinite' : 'none' }}></i>
-              </div>
-              <div className="camera-text">
-                {isUploading ? 'Processing...' : isInitializing ? 'Initializing camera...' : (!isAuthenticated && !isAnonymousMode) ? 'Sign in required' : preview ? 'Tap to retake' : 'Tap to Scan Menu'}
-              </div>
-            </div>
-          </div>
-
-          {/* OR Divider */}
-          <div className="or-divider">
-            <span>OR</span>
-          </div>
-
-          {/* Choose File Button - Always visible, triggers popup if needed */}
-          <div className="form-group" style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (!isAuthenticated && !isAnonymousMode) {
-                  if (onShowAnonymousPopup) {
-                    onShowAnonymousPopup()
+            {/* Camera Controls */}
+            <div className="camera-controls-bar">
+              <button
+                className="btn-icon"
+                onClick={() => {
+                  if (!isAuthenticated && !isAnonymousMode) {
+                    if (onShowAnonymousPopup) {
+                      onShowAnonymousPopup()
+                    }
+                    return
                   }
-                  return
-                }
-                fileInputRef.current?.click()
-              }}
-              className="btn-outline"
-              disabled={isUploading}
-            >
-              <i className="ri-upload-2-line"></i> Choose File
-            </button>
+                  fileInputRef.current?.click()
+                }}
+                disabled={isUploading}
+              >
+                <i className="ri-image-line"></i>
+              </button>
+
+              {/* The Big Shutter Button */}
+              <button
+                className={`shutter-btn ${isUploading || (!isAuthenticated && !isAnonymousMode) ? 'disabled' : ''}`}
+                onClick={isUploading ? undefined : (preview ? handleRetake : handleScanClick)}
+              >
+                <div className="shutter-inner" style={
+                  isInitializing || isUploading
+                    ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+                    : (!isAuthenticated && !isAnonymousMode)
+                      ? { background: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+                      : preview
+                        ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+                        : {}
+                }>
+                  {(isInitializing || isUploading) ? (
+                    <i className="ri-loader-4-line" style={{ fontSize: '24px', color: 'var(--primary-dark)', animation: 'spin 1s linear infinite' }}></i>
+                  ) : (!isAuthenticated && !isAnonymousMode) ? (
+                    <i className="ri-lock-line" style={{ fontSize: '24px', color: 'white' }}></i>
+                  ) : preview ? (
+                    <i className="ri-refresh-line" style={{ fontSize: '24px', color: 'var(--primary-dark)' }}></i>
+                  ) : null}
+                </div>
+              </button>
+
+              <button className="btn-icon">
+                <i className="ri-flashlight-line"></i>
+              </button>
+            </div>
           </div>
 
           {/* Hidden File Input */}
@@ -467,11 +489,12 @@ export default function MenuUpload({
 
           {/* Bottom Action */}
           {preview && (isAuthenticated || isAnonymousMode) && (
-            <div className="cta-container">
+            <div style={{ margin: '16px 20px', marginBottom: '100px' }}>
               <button
                 onClick={handleUpload}
                 disabled={isUploading}
                 className="btn-block"
+                style={{ width: '100%' }}
               >
                 {isUploading ? (
                   <>
@@ -517,6 +540,13 @@ export default function MenuUpload({
           )}
         </>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   )
 }

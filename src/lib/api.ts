@@ -99,6 +99,11 @@ class ApiClient {
     return this.request('/restaurants')
   }
 
+  // Get single restaurant by slug (OPTIMIZED - fetches only one instead of all)
+  async getRestaurantBySlug(slug: string): Promise<{ restaurant: Restaurant }> {
+    return this.request(`/restaurants/${slug}/info`)
+  }
+
   // Menus
   async getRestaurantMenus(slug: string, token?: string | null): Promise<{ menus: (MenuImage & { ocr_results?: OCRResult })[] }> {
     return this.request(`/restaurants/${slug}/menus`, undefined, token)
@@ -115,12 +120,12 @@ class ApiClient {
     formData.append('restaurantSlug', restaurantSlug)
 
     const authHeaders = await this.getAuthHeaders(token)
-    
+
     // Add anonymous header if needed
     if (isAnonymous) {
       authHeaders['x-anonymous-upload'] = 'true'
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/api/upload`, {
       method: 'POST',
       headers: authHeaders,
@@ -142,12 +147,12 @@ class ApiClient {
     ocrResult: OCRResult
   }> {
     const authHeaders = await this.getAuthHeaders(token)
-    
+
     // Add anonymous header if needed
     if (isAnonymous) {
       authHeaders['x-anonymous-upload'] = 'true'
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/api/upload`, {
       method: 'POST',
       headers: {

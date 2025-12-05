@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Webhook } from 'svix'
 import { supabaseAdmin } from '@/lib/supabase'
+import { isAdminEmail } from '@/lib/admin-config'
 
 // Clerk webhook events we handle
 const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Get the body
     const body = await request.text()
-    
+
     // Create a new Svix instance with your secret
     const wh = new Webhook(WEBHOOK_SECRET || '')
 
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
 async function handleUserCreated(data: any) {
   try {
     const { id, email_addresses, first_name, last_name, image_url } = data
-    
+
     // Get the primary email
     const primaryEmail = email_addresses.find((email: any) => email.id === data.primary_email_address_id)
     const email = primaryEmail?.email_address || ''
@@ -97,18 +98,23 @@ async function handleUserCreated(data: any) {
       return
     }
 
+    // Check if this is the admin email
+    const userRole = isAdminEmail(email) ? 'admin' : 'trainee'
+
+    console.log(`User role determined: ${userRole} (email: ${email})`)
+
     // Create new profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .insert({
         user_id: id,
-        display_name: displayName,
+        display_name: userRole === 'admin' ? 'Admin' : displayName,
         avatar_url: image_url,
-        role: 'trainee',
-        base_location: null,
+        role: userRole,
+        base_location: userRole === 'admin' ? 'Admin' : null,
         dietary_preference: 'vegetarian',
-        karma_points: 0,
-        level: 1
+        karma_points: userRole === 'admin' ? 9999 : 0,
+        level: userRole === 'admin' ? 5 : 1
       })
       .select()
       .single()
@@ -148,7 +154,7 @@ async function handleUserCreated(data: any) {
 async function handleUserDeleted(data: any) {
   try {
     const { id } = data
-    
+
     console.log(`Handling user deletion for Clerk user: ${id}`)
 
     // Get the user profile first to get the profile ID
@@ -165,7 +171,7 @@ async function handleUserDeleted(data: any) {
 
     // Delete related records (due to ON DELETE CASCADE, this should be handled automatically)
     // But we'll be explicit about the order for clarity
-    
+
     // Delete leaderboard entry
     const { error: leaderboardError } = await supabaseAdmin
       .from('leaderboard')

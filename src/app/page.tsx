@@ -6,28 +6,13 @@ import FilterSection from '@/components/FilterSection'
 import CourtList from '@/components/CourtList'
 import BottomNav from '@/components/BottomNav'
 import LocationPermissionPrompt from '@/components/LocationPermissionPrompt'
-import LoadingScreen from '@/components/LoadingScreen'
 import { useLocation } from '@/hooks/useLocation'
 
 export default function Home() {
   const { location, isLoading, requestLocation } = useLocation()
-  const [appLoading, setAppLoading] = useState(true)
-
-  useEffect(() => {
-    // Simulate initial app loading
-    const timer = setTimeout(() => {
-      setAppLoading(false)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  console.log('Page component - location:', location)
-  console.log('Page component - isLoading:', isLoading)
 
   return (
     <>
-      <LoadingScreen isLoading={appLoading} />
       <LocationPermissionPrompt />
       <HeroSection
         location={location}
@@ -35,9 +20,26 @@ export default function Home() {
         requestLocation={requestLocation}
       />
       <FilterSection />
-      <div className="section-title">Nearby Courts</div>
       <CourtList userLocation={location} locationLoading={isLoading} />
       <BottomNav />
+      
+      {/* Install prompt element for tour */}
+      <div className="step-install-prompt" style={{ 
+        position: 'fixed', 
+        bottom: '100px', 
+        right: '20px', 
+        width: '40px', 
+        height: '40px', 
+        borderRadius: '50%', 
+        backgroundColor: '#DCEB66', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        zIndex: 1000,
+        opacity: 0.8
+      }}>
+        <i className="ri-download-line" style={{ color: '#1F291F', fontSize: '20px' }}></i>
+      </div>
     </>
   )
 }

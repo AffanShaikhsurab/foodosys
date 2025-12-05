@@ -7,6 +7,7 @@ import { ocrSpaceV2Service } from '@/lib/ocr-space-v2'
 import { combinedOCRService } from '@/lib/combined-ocr'
 import { ValidationError, NotFoundError, DatabaseError, ExternalServiceError, handleAPIError } from '@/lib/errors'
 import { logUpload, logger } from '@/lib/logger'
+import { karmaService, KarmaBreakdown } from '@/lib/karma-service'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -1065,45 +1066,105 @@ export async function POST(request: NextRequest) {
       throw new DatabaseError('Failed to update menu image status', updateError)
     }
 
-    // Create daily contribution record to track user contribution and award karma
-    console.log(`[Upload API] Creating daily contribution record:`, {
-      userId,
-      restaurantId,
-      menuImageId,
-      requestId,
-      timestamp: new Date().toISOString()
-    })
+    // Award karma points only for authenticated uploads
+    let karmaBreakdown: KarmaBreakdown | null = null
 
-    const { data: contributionData, error: contributionError } = await supabaseAdmin
-      .from('daily_contributions')
-      .insert([{
-        user_id: userId,
-        restaurant_id: restaurantId,
-        menu_image_id: menuImageId,
-        contribution_type: 'upload',
-        contribution_date: new Date().toISOString().split('T')[0],
-        points_earned: 10 // Upload contribution earns 10 points
-      }])
-      .select()
-      .single()
-
-    if (contributionError) {
-      console.error(`[Upload API] Failed to create contribution record:`, {
-        error: contributionError.message,
-        errorDetails: (contributionError as any)?.details,
-        userId,
+    if (userId && !isAnonymousUpload) {
+      console.log(`[Upload API] Processing karma for authenticated user:`, {
+        clerkUserId: userId,
         restaurantId,
         menuImageId,
         requestId,
         timestamp: new Date().toISOString()
       })
-      // Don't throw error - contribution tracking is non-critical for upload success
-      // The trigger should handle karma awarding, but we log the error for monitoring
+
+      // Get user's profile ID from clerk user ID
+      const userProfileId = await karmaService.getUserProfileId(userId)
+
+      if (userProfileId) {
+        console.log(`[Upload API] Found user profile:`, {
+          clerkUserId: userId,
+          userProfileId,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+
+        // Check rate limits before awarding karma
+        const rateLimitCheck = await karmaService.checkRateLimit(userProfileId, restaurantId)
+
+        if (!rateLimitCheck.allowed) {
+          console.log(`[Upload API] Rate limit applied (but upload still succeeds):`, {
+            userProfileId,
+            reason: rateLimitCheck.reason,
+            cooldownRemaining: rateLimitCheck.cooldownRemaining,
+            requestId,
+            timestamp: new Date().toISOString()
+          })
+          // Note: We still allow the upload, just don't award karma
+        } else {
+          // Create contribution record with meal session
+          const contributionCreated = await karmaService.createContribution(
+            userProfileId,
+            restaurantId,
+            menuImageId,
+            10 // Base points
+          )
+
+          if (contributionCreated) {
+            console.log(`[Upload API] Contribution record created:`, {
+              userProfileId,
+              restaurantId,
+              menuImageId,
+              mealSession: karmaService.getMealSession(),
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+
+            // Award karma with all applicable bonuses
+            karmaBreakdown = await karmaService.awardKarma(userProfileId, menuImageId, 10)
+
+            if (karmaBreakdown) {
+              console.log(`[Upload API] Karma awarded successfully:`, {
+                userProfileId,
+                totalPoints: karmaBreakdown.totalPoints,
+                baseEarned: karmaBreakdown.baseEarned,
+                consecutiveBonus: karmaBreakdown.consecutiveBonus,
+                firstUploadBonus: karmaBreakdown.firstUploadBonus,
+                dailyStreakBonus: karmaBreakdown.dailyStreakBonus,
+                weeklyStreakBonus: karmaBreakdown.weeklyStreakBonus,
+                mealSession: karmaBreakdown.mealSession,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            } else {
+              console.error(`[Upload API] Failed to award karma:`, {
+                userProfileId,
+                menuImageId,
+                requestId,
+                timestamp: new Date().toISOString()
+              })
+            }
+          } else {
+            console.error(`[Upload API] Failed to create contribution record:`, {
+              userProfileId,
+              restaurantId,
+              menuImageId,
+              requestId,
+              timestamp: new Date().toISOString()
+            })
+          }
+        }
+      } else {
+        console.log(`[Upload API] User profile not found, skipping karma:`, {
+          clerkUserId: userId,
+          requestId,
+          timestamp: new Date().toISOString()
+        })
+      }
     } else {
-      console.log(`[Upload API] Contribution record created successfully:`, {
-        contributionId: (contributionData as any)?.id,
+      console.log(`[Upload API] Skipping karma for anonymous upload:`, {
+        isAnonymousUpload,
         userId,
-        pointsEarned: 10,
         requestId,
         timestamp: new Date().toISOString()
       })
@@ -1114,7 +1175,8 @@ export async function POST(request: NextRequest) {
       ocrResultId: ocrResultId || 'No OCR result',
       finalStatus,
       ocrProcessingSucceeded,
-      contributionCreated: !contributionError,
+      karmaAwarded: !!karmaBreakdown,
+      totalKarma: karmaBreakdown?.totalPoints || 0,
       totalDuration: Date.now() - startTime + 'ms',
       requestId,
       timestamp: new Date().toISOString()
@@ -1128,11 +1190,12 @@ export async function POST(request: NextRequest) {
       status: finalStatus,
       ocrProcessed: ocrProcessingSucceeded,
       hasMenuValidation: !!menuValidationResult,
+      hasKarma: !!karmaBreakdown,
       requestId,
       timestamp: new Date().toISOString()
     })
 
-    const response = {
+    const response: any = {
       success: true,
       menuImage: menuImageData,
       ocrResult: ocrData,
@@ -1150,10 +1213,27 @@ export async function POST(request: NextRequest) {
       } : null
     }
 
+    // Include karma information if awarded
+    if (karmaBreakdown) {
+      response.karma = {
+        totalPoints: karmaBreakdown.totalPoints,
+        breakdown: {
+          base: karmaBreakdown.baseEarned,
+          consecutiveBonus: karmaBreakdown.consecutiveBonus,
+          firstUploadBonus: karmaBreakdown.firstUploadBonus,
+          dailyStreakBonus: karmaBreakdown.dailyStreakBonus,
+          weeklyStreakBonus: karmaBreakdown.weeklyStreakBonus
+        },
+        mealSession: karmaBreakdown.mealSession,
+        message: karmaService.getKarmaMessage(karmaBreakdown)
+      }
+    }
+
     console.log(`[Upload API] Sending response to client:`, {
       imageId: menuImageId,
       responseKeys: Object.keys(response),
       menuValidation: response.menuValidation,
+      karmaIncluded: !!response.karma,
       requestId,
       timestamp: new Date().toISOString()
     })
