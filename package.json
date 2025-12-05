@@ -18,9 +18,11 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.35.5",
+    "@dotlottie/react-player": "^1.6.19",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@google/generative-ai": "^0.24.1",
+    "@lottiefiles/dotlottie-react": "^0.17.8",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "@supabase/supabase-js": "^2.38.0",

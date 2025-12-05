@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import CourtCard from './CourtCard'
 import { useDistance } from '@/hooks/useDistance'
 import { getCombinedAvailability, clearAvailabilityCache, RestaurantAvailabilityInfo } from '@/lib/combined-availability'
-
+import { cacheStaticRestaurants } from '@/lib/data-cache'
 import { preloadRestaurantImages, getRestaurantThumbnailUrl, getRestaurantImageUrl } from '@/lib/image-preloader'
 
 interface Restaurant {
@@ -159,17 +159,27 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
         setIsLoading(true)
       }
 
-      // Check cache first if not forcing refresh
       if (!forceRefresh) {
-        const cachedData = sessionStorage.getItem('foodosys_home_data')
+        const cachedData = typeof window !== 'undefined' ? localStorage.getItem('foodosys_home_data') : null
         if (cachedData) {
           const parsed = JSON.parse(cachedData)
-          // Check if cache is less than 30 minutes old
-          if (Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+          if (Date.now() - parsed.timestamp < 12 * 60 * 60 * 1000) {
             setRestaurants(parsed.restaurants)
             setMenuAvailability(parsed.menuAvailability)
             setMealAvailability(parsed.mealAvailability)
             setMenuStats(parsed.menuStats)
+
+            // Ensure static cache is populated even when using homepage cache
+            const staticData = parsed.restaurants.map((r: Restaurant) => ({
+              id: r.id,
+              name: r.name,
+              location: r.location,
+              slug: r.slug,
+              imageUrl: getRestaurantImageUrl(r.id),
+              thumbnailUrl: getRestaurantThumbnailUrl(r.id)
+            }))
+            cacheStaticRestaurants(staticData)
+
             setIsLoading(false)
             return
           }
@@ -192,6 +202,17 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
         // Preload restaurant images in background for instant transitions
         preloadRestaurantImages(restaurantIds)
 
+        // Cache static restaurant data for instant hero section rendering
+        const staticData = data.restaurants.map((r: Restaurant) => ({
+          id: r.id,
+          name: r.name,
+          location: r.location,
+          slug: r.slug,
+          imageUrl: getRestaurantImageUrl(r.id),
+          thumbnailUrl: getRestaurantThumbnailUrl(r.id)
+        }))
+        cacheStaticRestaurants(staticData)
+
         // Count restaurants with and without menus
         const withMenus = Object.values(availability).filter(Boolean).length
         const withCurrentMealMenu = Object.values(mealAvail).filter(m => m.hasCurrentMealMenu).length
@@ -202,8 +223,7 @@ export default function CourtList({ userLocation, locationLoading }: CourtListPr
         setMealAvailability(mealAvail)
         setMenuStats(stats)
 
-        // Cache the data
-        sessionStorage.setItem('foodosys_home_data', JSON.stringify({
+        localStorage.setItem('foodosys_home_data', JSON.stringify({
           restaurants: data.restaurants,
           menuAvailability: availability,
           mealAvailability: mealAvail,

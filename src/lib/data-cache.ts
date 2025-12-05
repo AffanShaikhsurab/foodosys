@@ -176,3 +176,125 @@ export function prewarmRestaurantDetail(slug: string): RestaurantCache | null {
 
     return null
 }
+
+// ========== STATIC RESTAURANT DATA CACHE ==========
+// Uses localStorage for persistence across browser sessions
+// This data rarely changes, so we cache it permanently for instant hero section rendering
+
+export interface StaticRestaurantData {
+    id: string
+    name: string
+    location: string
+    slug: string
+    imageUrl: string      // Hero image URL
+    thumbnailUrl: string  // Card thumbnail URL
+}
+
+const STATIC_CACHE_KEY = 'foodosys_static_restaurants'
+const STATIC_CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
+
+interface StaticRestaurantCache {
+    restaurants: Record<string, StaticRestaurantData>
+    timestamp: number
+}
+
+/**
+ * Get static restaurant data by slug - used for instant hero section rendering
+ * Returns null if not cached, allowing component to show transition data or fetch
+ */
+export function getStaticRestaurantBySlug(slug: string): StaticRestaurantData | null {
+    if (typeof window === 'undefined') return null
+
+    try {
+        const cached = localStorage.getItem(STATIC_CACHE_KEY)
+        if (!cached) return null
+
+        const parsed: StaticRestaurantCache = JSON.parse(cached)
+
+        // Check if cache is still valid (7 days)
+        if (Date.now() - parsed.timestamp > STATIC_CACHE_TTL) {
+            console.log('[StaticCache] Cache expired, clearing')
+            localStorage.removeItem(STATIC_CACHE_KEY)
+            return null
+        }
+
+        const restaurant = parsed.restaurants[slug]
+        if (restaurant) {
+            console.log('[StaticCache] ✅ Instant hit for:', slug)
+            return restaurant
+        }
+    } catch (e) {
+        console.warn('[StaticCache] Failed to read:', e)
+    }
+
+    return null
+}
+
+/**
+ * Get static restaurant data by ID
+ */
+export function getStaticRestaurantById(id: string): StaticRestaurantData | null {
+    if (typeof window === 'undefined') return null
+
+    try {
+        const cached = localStorage.getItem(STATIC_CACHE_KEY)
+        if (!cached) return null
+
+        const parsed: StaticRestaurantCache = JSON.parse(cached)
+
+        if (Date.now() - parsed.timestamp > STATIC_CACHE_TTL) {
+            return null
+        }
+
+        // Find by ID
+        const restaurant = Object.values(parsed.restaurants).find(r => r.id === id)
+        return restaurant || null
+    } catch (e) {
+        console.warn('[StaticCache] Failed to read by ID:', e)
+    }
+
+    return null
+}
+
+/**
+ * Cache all static restaurant data - called when homepage loads
+ * This pre-populates the cache so restaurant detail pages load instantly
+ */
+export function cacheStaticRestaurants(restaurants: StaticRestaurantData[]): void {
+    if (typeof window === 'undefined') return
+
+    try {
+        // Build lookup by slug for O(1) access
+        const restaurantMap: Record<string, StaticRestaurantData> = {}
+        restaurants.forEach(r => {
+            restaurantMap[r.slug] = r
+        })
+
+        const cache: StaticRestaurantCache = {
+            restaurants: restaurantMap,
+            timestamp: Date.now()
+        }
+
+        localStorage.setItem(STATIC_CACHE_KEY, JSON.stringify(cache))
+        console.log('[StaticCache] 📦 Cached', restaurants.length, 'restaurants for instant loading')
+    } catch (e) {
+        console.warn('[StaticCache] Failed to cache:', e)
+    }
+}
+
+/**
+ * Check if static cache exists and is valid
+ */
+export function hasValidStaticCache(): boolean {
+    if (typeof window === 'undefined') return false
+
+    try {
+        const cached = localStorage.getItem(STATIC_CACHE_KEY)
+        if (!cached) return false
+
+        const parsed: StaticRestaurantCache = JSON.parse(cached)
+        return Date.now() - parsed.timestamp < STATIC_CACHE_TTL
+    } catch {
+        return false
+    }
+}

@@ -6,6 +6,8 @@ import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider, ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
 import { TourProvider } from './TourProvider'
+import { TransitionProvider } from '@/context/TransitionContext'
+import { getAllImageUrls } from '@/lib/image-preloader'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -42,6 +44,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
         {/* Remix Icon for auth pages */}
         <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
+        {getAllImageUrls().map((url) => (
+          <link key={url} rel="prefetch" as="image" href={url} />
+        ))}
       </head>
       <body className={inter.className}>
         <ClerkProvider
@@ -75,11 +80,13 @@ export default function RootLayout({
             <ClerkLoadingComponent />
           </ClerkLoading>
           <ClerkLoaded>
-            <TourProvider>
-              <div className="app-container">
-                {children}
-              </div>
-            </TourProvider>
+            <TransitionProvider>
+              <TourProvider>
+                <div className="app-container">
+                  {children}
+                </div>
+              </TourProvider>
+            </TransitionProvider>
           </ClerkLoaded>
           <Analytics />
         </ClerkProvider>

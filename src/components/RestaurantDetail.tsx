@@ -8,6 +8,8 @@ import { formatTimestamp, getEffectiveTimestamp, groupImagesByMealType } from '@
 import { MenuImage, OCRResult } from '@/lib/types'
 import RestaurantImageViewer from '@/components/RestaurantImageViewer'
 import { useUser } from '@clerk/nextjs'
+import { getRestaurantImageUrl } from '@/lib/image-preloader'
+import { getStaticRestaurantBySlug, StaticRestaurantData } from '@/lib/data-cache'
 
 interface DisplayMenu extends MenuImage {
   ocr_results?: OCRResult
@@ -31,9 +33,32 @@ interface CardTransitionData {
 export default function RestaurantDetail({ params }: { params: { slug: string } }) {
   const router = useRouter()
   const { user } = useUser()
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+
+  // Try to get cached static data first for instant rendering
+  const [cachedStatic] = useState<StaticRestaurantData | null>(() => {
+    if (typeof window !== 'undefined') {
+      return getStaticRestaurantBySlug(params.slug)
+    }
+    return null
+  })
+
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(() => {
+    // Convert cached static data to Restaurant format for backward compatibility
+    if (cachedStatic) {
+      return {
+        id: cachedStatic.id,
+        name: cachedStatic.name,
+        location: cachedStatic.location,
+        slug: cachedStatic.slug,
+        distance_estimate_m: 0,
+        created_at: ''
+      }
+    }
+    return null
+  })
   const [menus, setMenus] = useState<DisplayMenu[]>([])
-  const [loading, setLoading] = useState(true)
+  // If we have cached data, hero can render immediately - no loading state needed
+  const [loading, setLoading] = useState(() => !cachedStatic)
   const [menusLoading, setMenusLoading] = useState(true)
   const [transitionData, setTransitionData] = useState<CardTransitionData | null>(() => {
     // Read transition data synchronously on first render to avoid flash
@@ -185,7 +210,8 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
     }
   }
 
-  if (loading && !transitionData) {
+  // Show loading only if we have NO data sources (no cache, no transition data)
+  if (loading && !transitionData && !cachedStatic) {
     return (
       <div className="app-container">
         <div className="flex justify-center items-center h-64">
@@ -197,8 +223,8 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   }
 
   // Only show error state when loading is complete AND there's an actual error
-  // AND we don't have transition data to display (prevents flash of "not found")
-  if (!loading && (error || !restaurant) && !transitionData) {
+  // AND we don't have any data to display (prevents flash of "not found")
+  if (!loading && (error || !restaurant) && !transitionData && !cachedStatic) {
     return (
       <div className="app-container">
         <div className="p-4">
@@ -212,7 +238,10 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
   }
 
   const isOpen = true
-  const heroImage = transitionData?.imageUrl || 'https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=1000'
+  // Priority: cached static data > transition data > fetched restaurant data > fallback
+  const heroImage = cachedStatic?.imageUrl || transitionData?.imageUrl || (restaurant ? getRestaurantImageUrl(restaurant.id) : 'https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=1000')
+  const heroName = cachedStatic?.name || transitionData?.name || restaurant?.name
+  const heroLocation = cachedStatic?.location || transitionData?.location || restaurant?.location
 
   return (
     <div className="restaurant-detail-container">
@@ -232,14 +261,14 @@ export default function RestaurantDetail({ params }: { params: { slug: string } 
         <img
           src={heroImage}
           className="hero-img"
-          alt={transitionData?.name || restaurant?.name || 'Restaurant'}
+          alt={heroName || 'Restaurant'}
         />
 
         <div className="hero-overlay-gradient">
           <span className="status-badge">{isOpen ? 'Open Now' : 'Closed'}</span>
-          <h1 className="court-title">{transitionData?.name || restaurant?.name}</h1>
+          <h1 className="court-title">{heroName}</h1>
           <div className="court-meta">
-            <i className="ri-map-pin-line"></i> {transitionData?.location || restaurant?.location}
+            <i className="ri-map-pin-line"></i> {heroLocation}
           </div>
         </div>
       </header>

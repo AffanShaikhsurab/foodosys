@@ -20,7 +20,6 @@ const RESTAURANT_IMAGES = [
 // For card thumbnails (smaller size for faster load)
 const THUMBNAIL_IMAGES = RESTAURANT_IMAGES.map(url => url.replace('w=800', 'w=150'))
 
-// Cache key for storing restaurant-to-image mapping
 const IMAGE_CACHE_KEY = 'foodosys_restaurant_images'
 
 interface ImageCache {
@@ -50,11 +49,10 @@ export function getImageCache(): ImageCache | null {
     if (typeof window === 'undefined') return null
 
     try {
-        const cached = sessionStorage.getItem(IMAGE_CACHE_KEY)
+        const cached = localStorage.getItem(IMAGE_CACHE_KEY)
         if (cached) {
             const parsed = JSON.parse(cached) as ImageCache
-            // Cache valid for 1 hour
-            if (Date.now() - parsed.timestamp < 60 * 60 * 1000) {
+            if (Date.now() - parsed.timestamp < 7 * 24 * 60 * 60 * 1000) {
                 return parsed
             }
         }
@@ -71,7 +69,7 @@ function saveImageCache(cache: ImageCache): void {
     if (typeof window === 'undefined') return
 
     try {
-        sessionStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cache))
+        localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cache))
     } catch (e) {
         console.error('Failed to save image cache:', e)
     }

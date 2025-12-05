@@ -10,10 +10,12 @@ import type { Restaurant } from '@/lib/types'
 import { useLocation } from '@/hooks/useLocation'
 import { useDistance } from '@/hooks/useDistance'
 import { useUser } from '@clerk/nextjs'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
 
 export default function UploadPage() {
   const router = useRouter()
   const [selectedRestaurant, setSelectedRestaurant] = useState('')
+  const [selectedRestaurantName, setSelectedRestaurantName] = useState('')
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
   const [showToast, setShowToast] = useState(false)
@@ -22,6 +24,7 @@ export default function UploadPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [showAnonymousPopup, setShowAnonymousPopup] = useState(false)
   const [isAnonymousMode, setIsAnonymousMode] = useState(false)
+  const [showRestaurantModal, setShowRestaurantModal] = useState(false)
 
   const { location, requestLocation, isLoading: isLocationLoading } = useLocation()
   const { calculateDistance } = useDistance()
@@ -79,6 +82,7 @@ export default function UploadPage() {
         if (!selectedRestaurant) {
           setNearestRestaurant(nearest)
           setSelectedRestaurant((nearest as Restaurant).slug)
+          setSelectedRestaurantName((nearest as Restaurant).name)
           setMessage(`Looks like you're at ${(nearest as Restaurant).name}. We've selected it for you!`)
           setShowToast(true)
 
@@ -120,76 +124,60 @@ export default function UploadPage() {
     setShowAnonymousPopup(false)
   }
 
+  const handleRestaurantSelect = (restaurant: Restaurant) => {
+    setSelectedRestaurant(restaurant.slug)
+    setSelectedRestaurantName(restaurant.name)
+    setShowRestaurantModal(false)
+  }
+
   if (isLoading) {
     return (
-      <div className="app-container" style={{ position: 'relative' }}>
-        <div className="min-h-screen bg-[#FDFDE8] flex items-center justify-center">
-          <div className="text-center">
-            <div className="ri-loader-4-line text-4xl text-[#2C3E2E] animate-spin" style={{ animation: 'spin 1s linear infinite' }}></div>
-            <p className="mt-4 text-[#889287]">Loading...</p>
-          </div>
+      <div className="scan-page-body">
+        <div className="lottie-loading-container">
+          <DotLottieReact
+            src="/Loading-Cat.lottie"
+            loop
+            autoplay
+            style={{ width: '200px', height: '200px' }}
+          />
+          <p className="loading-text">Getting ready to scan...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="app-container" style={{ position: 'relative' }}>
-      <div style={{ paddingTop: '5rem' }} className="upload-header">
-        <div className="upload-title">Update Menu</div>
-        <div className="upload-subtitle">You&apos;re helping ~30 students avoid a long walk. Nice! 🌱</div>
-      </div>
-
-      {/* Restaurant Selection */}
-      <div className="form-group">
-        <label className="label">Where are you?</label>
-        <div style={{ position: 'relative' }}>
-          <select
-            value={selectedRestaurant}
-            onChange={(e) => setSelectedRestaurant(e.target.value)}
-            className="location-select"
-            style={nearestRestaurant && selectedRestaurant === nearestRestaurant.slug ? {
-              borderColor: 'var(--accent-lime)',
-              backgroundColor: '#F0FDF4'
-            } : {}}
-          >
-            <option value="">Select Food Court...</option>
-            {restaurants.map((restaurant) => (
-              <option key={restaurant.slug} value={restaurant.slug}>
-                {restaurant.name}
-              </option>
-            ))}
-          </select>
-
-          {isLocationLoading && !selectedRestaurant && (
-            <div style={{
-              position: 'absolute',
-              right: '30px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              pointerEvents: 'none'
-            }}>
-              <i className="ri-loader-4-line animate-spin text-gray-400"></i>
-            </div>
-          )}
+    <div className="scan-page-body">
+      {/* Header: Gamification Context */}
+      <header className="scan-header-section">
+        <div className="karma-badge">
+          <i className="ri-flashlight-fill"></i> Earn +50 Karma
         </div>
+        <h1>Update Menu</h1>
+        <p>You&apos;re helping ~30 students. Nice! 🌱</p>
+      </header>
 
-        {nearestRestaurant && selectedRestaurant === nearestRestaurant.slug && (
-          <div style={{
-            fontSize: '12px',
-            color: '#166534',
-            marginTop: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}>
-            <i className="ri-map-pin-user-fill"></i>
-            Detected nearby location
+      {/* Location Selector */}
+      <div className="location-bar">
+        <div className="location-pill">
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span className="loc-sub">
+              {nearestRestaurant && selectedRestaurant === nearestRestaurant.slug
+                ? 'Detected Location'
+                : 'Selected Location'}
+            </span>
+            <span className="loc-text">
+              <i className="ri-map-pin-user-fill" style={{ color: 'var(--primary-dark)' }}></i>
+              {selectedRestaurantName || 'Select Location'}
+            </span>
           </div>
-        )}
+          <button className="btn-change" onClick={() => setShowRestaurantModal(true)}>
+            Change
+          </button>
+        </div>
       </div>
 
-      {/* Upload Component */}
+      {/* Main Camera/Upload View */}
       {selectedRestaurant ? (
         <MenuUpload
           restaurantSlug={selectedRestaurant}
@@ -199,32 +187,89 @@ export default function UploadPage() {
           onShowAnonymousPopup={handleShowAnonymousPopup}
         />
       ) : (
-        <div className="camera-zone">
-          <div className="camera-ui">
-            <div className="camera-btn">
-              <i className="ri-camera-fill"></i>
-            </div>
-            <div className="camera-text">
-              {isLocationLoading ? 'Locating...' : 'Select a location to start'}
-            </div>
+        <div className="camera-container">
+          <div className="camera-feed-bg"></div>
+
+          {/* Overlay UI */}
+          <div className="scan-overlay-frame">
+            <div className="corner tl"></div>
+            <div className="corner tr"></div>
+            <div className="corner bl"></div>
+            <div className="corner br"></div>
+            <div className="laser-line"></div>
+          </div>
+
+          {/* Camera Controls */}
+          <div className="camera-controls-bar">
+            <button className="btn-icon">
+              <i className="ri-image-line"></i>
+            </button>
+
+            {/* The Big Button - Prompts location selection */}
+            <button
+              className="shutter-btn disabled"
+              onClick={() => setShowRestaurantModal(true)}
+            >
+              <div className="shutter-inner" style={{
+                background: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <i className="ri-map-pin-line" style={{ fontSize: '24px', color: 'white' }}></i>
+              </div>
+            </button>
+
+            <button className="btn-icon">
+              <i className="ri-flashlight-line"></i>
+            </button>
           </div>
         </div>
       )}
 
-      {/* Tip */}
-      <div className="tip-container">
-        <div className="tip-content">
-          <i className="ri-lightbulb-flash-line tip-icon"></i>
-          <div className="tip-text">
-            <strong>Tip:</strong> Hold your camera steady and ensure prices and item names are clearly visible for best results.
-          </div>
+      {/* Contextual Tip */}
+      <div className="tip-box">
+        <div className="tip-icon-wrapper">
+          <i className="ri-lightbulb-flash-fill"></i>
         </div>
+        <span>
+          {selectedRestaurant
+            ? 'Hold steady. Ensure prices and items are clearly visible.'
+            : 'Select a location above to start scanning menus.'}
+        </span>
       </div>
 
       {/* Success Toast */}
       {showToast && (
         <div className="toast">
           <i className="ri-checkbox-circle-fill"></i> {message}
+        </div>
+      )}
+
+      {/* Restaurant Selection Modal */}
+      {showRestaurantModal && (
+        <div className="restaurant-select-modal" onClick={() => setShowRestaurantModal(false)}>
+          <div className="restaurant-select-content" onClick={(e) => e.stopPropagation()}>
+            <h3>
+              <i className="ri-map-pin-line" style={{ marginRight: '8px' }}></i>
+              Select Food Court
+            </h3>
+            {restaurants.map((restaurant) => (
+              <div
+                key={restaurant.slug}
+                className={`restaurant-option ${selectedRestaurant === restaurant.slug ? 'selected' : ''}`}
+                onClick={() => handleRestaurantSelect(restaurant)}
+              >
+                <div className="name">
+                  {nearestRestaurant?.slug === restaurant.slug && (
+                    <i className="ri-map-pin-user-fill" style={{ marginRight: '6px', color: 'var(--status-success)' }}></i>
+                  )}
+                  {restaurant.name}
+                </div>
+                <div className="location">{restaurant.location}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
