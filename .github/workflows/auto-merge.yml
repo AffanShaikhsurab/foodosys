@@ -1,0 +1,66 @@
+name: Auto-Merge
+
+on:
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+jobs:
+  auto-merge:
+    name: Auto-merge approved PRs
+    runs-on: ubuntu-latest
+    
+    # Only run if all checks pass and PR is approved
+    if: |
+      github.event.review.state == 'approved' ||
+      (github.event.check_suite.conclusion == 'success' && 
+       github.event.check_suite.head_branch != 'main')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check if PR is approved
+        id: check-approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const approved = reviews.some(review => 
+              review.state === 'APPROVED'
+            );
+            
+            return approved;
+            
+      - name: Check if all required checks pass
+        id: check-status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.payload.pull_request.head.sha
+            });
+            
+            const allPassed = checks.check_runs.every(check => 
+              check.conclusion === 'success' || 
+              check.conclusion === 'skipped'
+            );
+            
+            return allPassed;
+            
+      - name: Auto-merge if conditions met
+        if: steps.check-approval.outputs.result == 'true' && steps.check-status.outputs.result == 'true'
+        uses: pascalgn/automerge-action@v0.16.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: squash
+          MERGE_LABELS: automerge,!work-in-progress
+          MERGE_DELETE_BRANCH: true
