@@ -471,7 +471,7 @@ export async function POST(request: NextRequest) {
       })
 
       // Check if the image is a valid menu
-      const confidenceThreshold = 0.7;
+      const confidenceThreshold = 0.4;
       console.log(`[Upload API] Step 2: Checking menu validation against threshold:`, {
         imageId: menuImageId,
         isMenu: validationResult.isMenu,
